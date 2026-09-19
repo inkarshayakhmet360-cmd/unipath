@@ -1,7 +1,7 @@
 // src/app/home.tsx
 
 import React, { useEffect, useState } from "react";
-
+import ProfilePageV2 from "../components/ProfilePageV2";
 import {
   View,
   Text,
@@ -20,6 +20,10 @@ import MyPathPage from "../components/MyPathPage";
 import PreparationPage from "../components/PreparationPage";
 
 import { supabase } from "../lib/supabase";
+import AICounselor from "../components/AICounselor";
+import {
+ getStudentProfile
+} from "../lib/profile";
 
 /* =========================
    COLORS
@@ -54,7 +58,8 @@ type Tab =
   | "profile"
   | "universities"
   | "path"
-  | "preparation";
+  | "preparation"
+  | "ai";
 
 type PortfolioEntry = {
   title: string;
@@ -527,29 +532,43 @@ export default function HomeScreen() {
   ========================= */
 
   async function loadCurrentUser() {
+
+  try {
+
     const {
       data,
-      error,
-    } =
-      await supabase.auth.getUser();
+      error
+    } = await supabase.auth.getUser();
 
-    if (error) {
+
+    if(error){
       console.log(
         "USER ERROR:",
         error
       );
-
       return;
     }
 
-    if (
-      data.user
-    ) {
+
+    if(data.user){
+
       applyUser(
         data.user
       );
+
     }
+
+
+  } catch(e){
+
+    console.log(
+      "LOAD USER FAILED:",
+      e
+    );
+
   }
+
+}
 
   /* =========================
      START EDIT
@@ -998,6 +1017,16 @@ export default function HomeScreen() {
                 )
               }
             />
+
+            <NavItem
+  active={tab === "ai"}
+  compact={compactSidebar}
+  icon="sparkles-outline"
+  activeIcon="sparkles"
+  label="AI Counselor"
+  onPress={() => setTab("ai")}
+/>
+
           </View>
 
           {/* USER */}
@@ -1073,65 +1102,42 @@ export default function HomeScreen() {
 
         {/* MAIN */}
 
-        <View
+               <View
           style={
             styles.main
           }
         >
-          {tab ===
-          "universities" ? (
+
+          {tab === "universities" ? (
+
             <UniversitiesPage />
-          ) : tab ===
-            "path" ? (
+
+          ) : tab === "path" ? (
+
             <MyPathPage />
-          ) : tab ===
-            "preparation" ? (
+
+          ) : tab === "preparation" ? (
+
             <PreparationPage />
-          ) : (
-            <ScrollView
-              style={{
-                flex: 1,
-              }}
-              contentContainerStyle={
-                styles.mainContent
-              }
-              showsVerticalScrollIndicator={
-                false
-              }
-            >
-              <ProfilePage
-                profile={
-                  profile
-                }
-                draft={
-                  draft
-                }
-                editing={
-                  editing
-                }
-                accountName={
-                  accountName
-                }
-                onEdit={
-                  startEditing
-                }
-                onCancel={
-                  cancelEditing
-                }
-                onSave={
-                  saveProfile
-                }
-                onChange={
-                  changeDraft
-                }
-                onPortfolioChange={
-                  changePortfolioDraft
-                }
-              />
-            </ScrollView>
-          )}
+
+ ) : tab === "ai" ? (
+
+<AICounselor
+  profile={profile}
+/>
+
+) : (
+
+<ProfilePageV2
+  accountName={accountName}
+/>
+
+)}
+
         </View>
+
       </View>
+
     </SafeAreaView>
   );
 }

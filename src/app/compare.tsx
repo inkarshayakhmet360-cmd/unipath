@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 
 import {
   View,
@@ -55,21 +55,7 @@ const COLORS = {
    DEMO CANDIDATE
 ========================= */
 
-const candidate = {
-  ielts: 6.5,
-  sat: null as number | null,
 
-  gpa: "4.8 / 5",
-
-  budget: "$5–15k",
-
-  interests: [
-    "Computer Science",
-    "Engineering",
-  ],
-
-  needsScholarship: true,
-};
 
 /* =========================
    TYPES
@@ -103,38 +89,38 @@ function fitStatus(
   return "low";
 }
 
-function ieltsStatus(
-  university: University
-): Status {
-  const match =
-    university.requirements.ielts.match(
-      /[\d.]+/
-    );
-
-  if (!match) return "neutral";
-
-  const required =
-    Number(match[0]);
+function getIeltsStatus(
+  studentProfile:any,
+  required:number
+){
 
   if (
-    candidate.ielts >= required
+    studentProfile?.ielts >= required
   ) {
+
     return "good";
+
   }
 
+
   if (
-    candidate.ielts >=
-    required - 0.5
+    studentProfile?.ielts >= required - 0.5
   ) {
+
     return "medium";
+
   }
+
 
   return "low";
+
 }
 
 function satStatus(
-  university: University
+  university: University,
+  studentProfile:any
 ): Status {
+
   if (university.noSat) {
     return "good";
   }
@@ -147,7 +133,9 @@ function satStatus(
     return "good";
   }
 
-  if (candidate.sat === null) {
+  if (
+    !studentProfile?.sat
+  ) {
     return "medium";
   }
 
@@ -163,26 +151,30 @@ function budgetStatus(
 }
 
 function scholarshipStatus(
-  university: University
+  university: University,
+  studentProfile:any
 ): Status {
+
   if (
     university.scholarship
   ) {
     return "good";
   }
 
-  return candidate.needsScholarship
+  return studentProfile?.needsScholarship
     ? "low"
     : "neutral";
 }
 
 function interestStatus(
-  university: University
+  university: University,
+  studentProfile:any
 ): Status {
+
   const match =
     university.majors.some(
       (major) =>
-        candidate.interests.includes(
+        studentProfile?.interests?.includes(
           major
         )
     );
@@ -217,12 +209,32 @@ function portfolioStatus(
 
 export default function CompareScreen() {
   const router = useRouter();
+const params =
+useLocalSearchParams<{
+ ids?: string;
+ profile?: string;
+}>();
 
-  const params =
-    useLocalSearchParams<{
-      ids?: string;
-    }>();
 
+const studentProfile =
+useMemo(()=>{
+
+try{
+
+return params.profile
+?
+JSON.parse(params.profile)
+:
+{};
+
+}
+catch{
+
+return {};
+
+}
+
+},[params.profile]);
   const selected =
     useMemo(() => {
       const ids =
@@ -477,134 +489,126 @@ export default function CompareScreen() {
                     .requirements
                     .ielts,
                 status:
-                  ieltsStatus(
-                    university
-                  ),
-                note: `Ты: ${candidate.ielts}`,
+  getIeltsStatus(
+    studentProfile,
+    Number(
+      university.requirements.ielts
+    )
+  ),
+                note: `Ты: ${studentProfile.ielts}`,
               })}
             />
 
             <CompareRow
-              title="SAT"
-              icon="document-text-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university
-                    .requirements.sat,
-                status:
-                  satStatus(
-                    university
-                  ),
-                note:
-                  candidate.sat ===
-                  null
-                    ? "Ты: не сдавал"
-                    : `Ты: ${candidate.sat}`,
-              })}
-            />
+  title="SAT"
+  icon="document-text-outline"
+  universities={selected}
+  render={(university) => ({
+    value:
+      university
+        .requirements.sat,
 
-            <CompareRow
-              title="Academic"
-              icon="school-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university
-                    .requirements.gpa,
-                status: "good",
-                note: `Ты: ${candidate.gpa}`,
-              })}
-            />
+    status:
+      satStatus(
+        university,
+        studentProfile
+      ),
 
-            <CompareRow
-              title="Budget"
-              icon="wallet-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university.tuition,
-                status:
-                  budgetStatus(
-                    university
-                  ),
-                note: `Твой бюджет: ${candidate.budget}`,
-              })}
-            />
+    note:
+      studentProfile?.sat ===
+      null ||
+      !studentProfile?.sat
+        ? "Ты: не сдавал"
+        : `Ты: ${studentProfile.sat}`,
+  })}
+/>
+<CompareRow
+  title="Academic"
+  icon="school-outline"
+  universities={selected}
+  render={(university) => ({
+    value:
+      university
+        .requirements.gpa,
 
-            <CompareRow
-              title="Scholarships"
-              icon="cash-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university.scholarship
-                    ? "Available"
-                    : "Limited",
-                status:
-                  scholarshipStatus(
-                    university
-                  ),
-                note:
-                  "Тебе нужна financial aid",
-              })}
-            />
+    status:
+      "good",
 
-            <CompareRow
-              title="Major match"
-              icon="bulb-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university.majors
-                    .slice(0, 2)
-                    .join(", "),
-                status:
-                  interestStatus(
-                    university
-                  ),
-                note:
-                  "CS / Engineering",
-              })}
-            />
+    note:
+      `Ты: ${studentProfile?.gpa || "нет данных"}`,
+  })}
+/>
 
-            <CompareRow
-              title="Portfolio"
-              icon="ribbon-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  portfolioStatus(
-                    university
-                  ) === "good"
-                    ? "Good foundation"
-                    : "Needs strengthening",
-                status:
-                  portfolioStatus(
-                    university
-                  ),
-                note:
-                  "Research, projects, olympiads",
-              })}
-            />
 
-            <CompareRow
-              title="Scholarship strategy"
-              icon="navigate-outline"
-              universities={selected}
-              render={(university) => ({
-                value:
-                  university
-                    .scholarship
-                    ? "Worth exploring"
-                    : "Limited options",
-                status:
-                  university
-                    .scholarship
-                    ? "good"
-                    : "medium",
-              })}
-            />
+<CompareRow
+  title="Budget"
+  icon="wallet-outline"
+  universities={selected}
+  render={(university) => ({
+    value:
+      university.tuition,
+
+    status:
+      budgetStatus(
+        university
+      ),
+
+    note:
+      `Твой бюджет: ${
+        studentProfile?.budget || "нет данных"
+      }`,
+  })}
+/>
+
+
+<CompareRow
+  title="Scholarships"
+  icon="cash-outline"
+  universities={selected}
+  render={(university) => ({
+    value:
+      university.scholarship
+        ? "Available"
+        : "Limited",
+
+    status:
+      scholarshipStatus(
+        university,
+        studentProfile
+      ),
+
+    note:
+      studentProfile?.needsScholarship
+        ? "Тебе нужна financial aid"
+        : "Scholarship не является главным критерием",
+  })}
+/>
+
+
+<CompareRow
+  title="Major match"
+  icon="bulb-outline"
+  universities={selected}
+  render={(university) => ({
+    value:
+      university.majors
+        .slice(0, 2)
+        .join(", "),
+
+    status:
+      interestStatus(
+        university,
+        studentProfile
+      ),
+
+    note:
+      `Твои интересы: ${
+        studentProfile?.interests?.join(", ")
+        || "нет данных"
+      }`,
+  })}
+/>
+  
           </View>
         </ScrollView>
 

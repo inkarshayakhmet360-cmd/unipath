@@ -1,7 +1,13 @@
 import React, {
   useMemo,
   useState,
+  useEffect,
 } from "react";
+import {
+  useLocalSearchParams,
+} from "expo-router";
+
+import { supabase } from "../lib/supabase";
 
 import {
   View,
@@ -87,7 +93,14 @@ const filters: {
   },
 ];
 
-export default function UniversitiesPage() {
+type Props = {
+  profile:any;
+};
+
+
+export default function UniversitiesPage({
+  profile
+}: Props) {
   const router = useRouter();
 
   const { width } =
@@ -97,12 +110,135 @@ export default function UniversitiesPage() {
 
   const [search, setSearch] =
     useState("");
+    const [aiUniversities,setAiUniversities] =
+useState<any[]>([]);
+
+const [aiComparison,setAiComparison] =
+useState("");
+
+useEffect(()=>{
+
+  if(profile){
+
+    analyzeUniversities();
+
+  }
+
+},[profile]);
+
 
   const [activeFilters, setActiveFilters] =
     useState<Filter[]>(["forYou"]);
 
   const [selected, setSelected] =
     useState<string[]>([]);
+  async function analyzeUniversities(){
+
+try{
+
+  console.log(
+  "USER PROFILE:",
+  profile
+);
+
+setAiLoading(true);
+
+
+const {
+data,
+error
+}
+=
+await supabase.functions.invoke(
+"unipath-ai",
+{
+
+body:{
+
+aiMode:
+"university_match",
+
+currentPage:
+"universities",
+
+profile:profile,
+
+
+universities:
+universities,
+
+
+message:
+`
+You are UniPath admission AI.
+
+Analyze the student's profile.
+
+Choose the most suitable universities from provided list.
+
+Return ONLY JSON.
+
+Format:
+
+{
+"recommendations":[
+{
+"id":"",
+"name":"",
+"match":"Strong match | Competitive | Reach",
+"reason":"",
+"studentLevel":"",
+"requirementsGap":"",
+"nextSteps":""
+}
+]
+}
+
+Do not write general explanation.
+`
+}
+
+}
+
+);
+
+
+
+if(error)
+throw error;
+
+
+
+const result =
+JSON.parse(
+data.answer
+);
+
+
+setAiUniversities(
+result.recommendations
+);
+
+
+}
+
+catch(e:any){
+
+console.log(
+"AI UNIVERSITY ERROR",
+e
+);
+
+
+}
+
+finally{
+
+setAiLoading(false);
+
+}
+
+}
 
   /* ========================
      FILTERS
@@ -125,6 +261,7 @@ export default function UniversitiesPage() {
   const toggleSelected = (
     id: string
   ) => {
+   
     setSelected((old) => {
       if (old.includes(id)) {
         return old.filter(
@@ -224,12 +361,13 @@ export default function UniversitiesPage() {
   const openUniversity = (
     university: University
   ) => {
-    router.push({
-      pathname: "/university",
-      params: {
-        id: university.id,
-      },
-    });
+   router.push({
+  pathname:"/university",
+  params:{
+    id: university.id,
+    profile: JSON.stringify(profile),
+  },
+});
   };
 
   /* ========================
@@ -237,13 +375,22 @@ export default function UniversitiesPage() {
   ======================== */
 
   const compareSelected = () => {
-    router.push({
-      pathname: "/compare",
-      params: {
-        ids: selected.join(","),
-      },
-    });
-  };
+
+router.push({
+
+pathname:"/compare",
+
+params:{
+ids:selected.join(","),
+
+profile:
+JSON.stringify(profile)
+
+}
+
+});
+
+};
 
   return (
     <View style={styles.screen}>
@@ -296,9 +443,95 @@ export default function UniversitiesPage() {
               соответствуют твоему
               профилю.
             </Text>
+           
           </View>
         </View>
+{
+aiUniversities.length > 0 &&
 
+<View
+style={{
+marginTop:20
+}}
+>
+
+{
+aiUniversities.map((item)=>(
+<View
+key={item.id}
+style={{
+backgroundColor:"#FFFFFF",
+padding:18,
+borderRadius:18,
+marginBottom:15,
+borderWidth:1,
+borderColor:"#DFE5D7"
+}}
+>
+
+<Text
+style={{
+fontSize:18,
+fontWeight:"800",
+color:"#30362C"
+}}
+>
+{item.name}
+</Text>
+
+
+<Text
+style={{
+marginTop:8,
+color:"#648B4A",
+fontWeight:"700"
+}}
+>
+{item.match}
+</Text>
+
+
+<Text
+style={{
+marginTop:10,
+lineHeight:22
+}}
+>
+Почему подходит:
+{item.reason}
+</Text>
+
+
+<Text
+style={{
+marginTop:10,
+lineHeight:22
+}}
+>
+Разрыв:
+{item.requirementsGap}
+</Text>
+
+
+<Text
+style={{
+marginTop:10,
+lineHeight:22
+}}
+>
+Следующие шаги:
+{item.nextSteps}
+</Text>
+
+
+</View>
+))
+
+}
+
+</View>
+
+}
         {/* ==================
             SEARCH
         ================== */}
@@ -436,6 +669,7 @@ export default function UniversitiesPage() {
                   university
                 }
                 mobile={mobile}
+                profile={profile}
                 selected={selected.includes(
                   university.id
                 )}
@@ -576,6 +810,38 @@ export default function UniversitiesPage() {
   );
 }
 
+function calculateFit(
+  university: University,
+  profile:any
+){
+
+const ielts =
+Number(profile?.ielts || 0);
+
+
+const required =
+Number(
+university.requirements.ielts
+.replace(/[^0-9.]/g,"")
+);
+
+
+if(ielts >= required){
+return "Strong match";
+}
+
+
+if(
+ielts >= required - 0.5
+){
+return "Competitive";
+}
+
+
+return "Reach";
+
+}
+
 /* ========================
    UNIVERSITY CARD
 ======================== */
@@ -583,12 +849,14 @@ export default function UniversitiesPage() {
 function UniversityCard({
   university,
   mobile,
+  profile,
   selected,
   onSelect,
   onOpen,
 }: {
   university: University;
   mobile: boolean;
+   profile:any;
   selected: boolean;
 
   onSelect: () => void;
@@ -661,9 +929,13 @@ function UniversityCard({
           </Text>
 
           <FitBadge
-            fit={university.fit}
-          />
-
+  fit={
+    calculateFit(
+      university,
+      profile
+    )
+  }
+/>
           <Text
             style={
               styles.uniDescription

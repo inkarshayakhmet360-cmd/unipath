@@ -1,7 +1,7 @@
 import React, {
   useMemo,
+  useState,
 } from "react";
-
 import {
   View,
   Text,
@@ -55,20 +55,7 @@ const COLORS = {
   lowText: "#A45E50",
 };
 
-const candidate = {
-  ielts: 6.5,
 
-  sat: null as number | null,
-
-  gpa: "4.8 / 5",
-
-  budget: "$5–15k",
-
-  interests: [
-    "Computer Science",
-    "Engineering",
-  ],
-};
 
 type Status =
   | "good"
@@ -88,9 +75,45 @@ export default function UniversityScreen() {
   const mobile = width < 850;
 
   const params =
-    useLocalSearchParams<{
-      id?: string;
-    }>();
+useLocalSearchParams<{
+  id?: string;
+  profile?: string;
+}>();
+
+const profile = useMemo(() => {
+
+  try {
+
+    const data = params.profile
+      ? JSON.parse(
+          params.profile as string
+        )
+      : {};
+
+    console.log(
+      "PROFILE FROM PARAMS:",
+      params.profile
+    );
+
+    console.log(
+      "PROFILE OBJECT:",
+      data
+    );
+
+    return data;
+
+  } catch(error) {
+
+    console.log(
+      "PROFILE PARSE ERROR:",
+      error
+    );
+
+    return {};
+
+  }
+
+}, [params.profile]);
 
   const university =
     universities.find(
@@ -114,17 +137,32 @@ export default function UniversityScreen() {
             University not found
           </Text>
 
-          <Pressable
-            onPress={() =>
-              router.back()
-            }
-          >
-            <Text
-              style={styles.backLink}
-            >
-              ← Назад
-            </Text>
-          </Pressable>
+         <Pressable
+  onPress={() => {
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/home");
+    }
+
+  }}
+  style={styles.backButton}
+>
+
+  <Ionicons
+    name="arrow-back"
+    size={19}
+    color={COLORS.forest}
+  />
+
+  <Text
+    style={styles.backButtonText}
+  >
+    Назад
+  </Text>
+
+</Pressable>
         </View>
       </SafeAreaView>
     );
@@ -138,12 +176,16 @@ export default function UniversityScreen() {
       .join("");
 
   const criteria =
-    buildCriteria(university);
+  buildCriteria(
+    university,
+    profile
+  );
 
   const recommendations =
     buildRecommendations(
-      university
-    );
+  university,
+  profile
+);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -441,15 +483,18 @@ export default function UniversityScreen() {
               </Text>
             </View>
 
-            {university.strengths.map(
-              (item) => (
-                <AnalysisItem
-                  key={item}
-                  text={item}
-                  status="good"
-                />
-              )
-            )}
+            {generateStrengths(
+ university,
+ profile
+).map(
+(item)=>(
+<AnalysisItem
+ key={item}
+ text={item}
+ status="good"
+/>
+)
+)}
           </View>
 
           <View
@@ -486,15 +531,18 @@ export default function UniversityScreen() {
               </Text>
             </View>
 
-            {university.gaps.map(
-              (item) => (
-                <AnalysisItem
-                  key={item}
-                  text={item}
-                  status="medium"
-                />
-              )
-            )}
+            {generateGaps(
+ university,
+ profile
+).map(
+(item)=>(
+<AnalysisItem
+key={item}
+text={item}
+status="medium"
+/>
+)
+)}
           </View>
         </View>
 
@@ -592,7 +640,8 @@ export default function UniversityScreen() {
 ========================= */
 
 function buildCriteria(
-  university: University
+  university: University,
+  profile:any
 ) {
   const ieltsMatch =
     university.requirements.ielts.match(
@@ -605,21 +654,30 @@ function buildCriteria(
       : 0;
 
   const ieltsStatus: Status =
-    candidate.ielts >=
-    requiredIelts
+    Number(profile?.ielts ?? 0) >= requiredIelts
       ? "good"
-      : candidate.ielts >=
+      :profile.ielts >=
         requiredIelts - 0.5
       ? "medium"
       : "low";
 
-  const satStatus: Status =
-    university.noSat ||
-    university.requirements.sat
-      .toLowerCase()
-      .includes("optional")
-      ? "good"
-      : "medium";
+  const requiredSat =
+Number(
+ university.requirements.sat.match(/\d+/)?.[0]
+ ||0
+);
+
+
+const satStatus:Status =
+profile.sat >= requiredSat
+?
+"good"
+:
+profile.sat >= requiredSat - 100
+?
+"medium"
+:
+"low";
 
   const budgetStatus: Status =
     university.fitsBudget
@@ -632,7 +690,7 @@ function buildCriteria(
       required:
         university.requirements
           .ielts,
-      candidate: `${candidate.ielts}`,
+      candidate: `${profile.ielts}`,
       status: ieltsStatus,
     },
 
@@ -641,35 +699,69 @@ function buildCriteria(
       required:
         university.requirements.sat,
       candidate:
-        candidate.sat === null
+        profile.sat === null
           ? "Not taken"
-          : `${candidate.sat}`,
+          : `${profile.sat}`,
       status: satStatus,
     },
 
-    {
-      name: "Academic record",
-      required:
-        university.requirements.gpa,
-      candidate:
-        candidate.gpa,
-      status:
-        "good" as Status,
-    },
+   {
+  name: "Academic record",
+
+  required:
+    university.requirements.gpa,
+
+  candidate:
+    profile.gpa
+      ? `${profile.gpa}`
+      : "Not provided",
+
+  status:
+    getGpaStatus(
+      university,
+      profile
+    ),
+},
 
     {
       name: "Budget",
       required:
         university.tuition,
       candidate:
-        candidate.budget,
+        profile.budget,
       status: budgetStatus,
     },
   ];
 }
 
+function getGpaStatus(
+  university: University,
+  profile:any
+): Status {
+
+  const required =
+    Number(
+      university.requirements.gpa.match(/\d+\.?\d*/)?.[0]
+      ||0
+    );
+
+
+  if(profile.gpa >= required){
+    return "good";
+  }
+
+
+  if(profile.gpa >= required - 0.3){
+    return "medium";
+  }
+
+
+  return "low";
+}
+
 function buildRecommendations(
-  university: University
+  university: University,
+  profile:any
 ) {
   const recommendations = [
     {
@@ -762,6 +854,116 @@ function buildRecommendations(
   }
 
   return recommendations;
+}
+function generateStrengths(
+ university:any,
+ profile:any
+){
+
+const result=[];
+
+
+if(
+Number(profile?.ielts)>=
+Number(
+university.requirements.ielts.match(/[\d.]+/)?.[0] || 0
+)
+){
+result.push(
+`IELTS соответствует требованиям университета`
+);
+}
+
+
+if(profile?.gpa){
+result.push(
+`Академический профиль: GPA ${profile.gpa}`
+);
+}
+
+
+if(profile?.major){
+result.push(
+`Направление совпадает с ${profile.major}`
+);
+}
+
+
+if(result.length===0){
+result.push(
+"Профиль требует дополнительного анализа"
+);
+}
+
+
+return result;
+
+}
+
+
+
+function generateGaps(
+ university:any,
+ profile:any
+){
+
+const result=[];
+
+
+const required =
+Number(
+university.requirements.ielts.match(/[\d.]+/)?.[0] || 0
+);
+
+
+if(
+Number(profile?.ielts ?? 0)
+<
+required
+){
+
+result.push(
+`IELTS нужно повысить с ${profile?.ielts ?? 0} до ${required}`
+);
+
+}
+
+
+if(
+!profile?.sat &&
+!university.noSat
+){
+
+result.push(
+"SAT отсутствует, рекомендуется подготовка"
+);
+
+}
+
+
+if(
+profile?.budget <
+university.tuition
+){
+
+result.push(
+"Необходимо изучить варианты scholarship"
+);
+
+}
+
+
+if(result.length===0){
+
+result.push(
+"Критических пробелов не найдено"
+);
+
+}
+
+
+return result;
+
 }
 
 /* =========================

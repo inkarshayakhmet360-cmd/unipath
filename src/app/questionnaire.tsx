@@ -1,23 +1,27 @@
-import React, { useRef, useState } from "react";
+import React, {
+  useRef,
+  useState,
+} from "react";
 
 import {
-  View,
-  Text,
-  StyleSheet,
+  Animated,
   Pressable,
   SafeAreaView,
   ScrollView,
-  TextInput,
+  StyleSheet,
   Switch,
-  Animated,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import { useRouter } from "expo-router";
+
 import { supabase } from "../lib/supabase";
 
-/* =========================
+/* =========================================================
    COLORS
-========================= */
+========================================================= */
 
 const COLORS = {
   background: "#F6F7F1",
@@ -39,18 +43,15 @@ const COLORS = {
 
   border: "#DFE5D7",
 
-  error: "#C85B52",
-  errorSoft: "#FFF8F7",
+  error: "#B84A4A",
+  errorSoft: "#FFF4F4",
 };
 
-/* =========================
+/* =========================================================
    OPTIONS
-========================= */
+========================================================= */
 
 const gradeOptions = [
-  "5",
-  "6",
-  "7",
   "8",
   "9",
   "10",
@@ -73,17 +74,68 @@ const interestOptions = [
   "Не определился",
 ];
 
-const countryOptions = [
+const studentCountryOptions = [
+  "🇰🇿 Kazakhstan",
+  "🇺🇿 Uzbekistan",
+  "🇰🇬 Kyrgyzstan",
+  "🇹🇯 Tajikistan",
+  "🇹🇲 Turkmenistan",
+
+  "🇦🇿 Azerbaijan",
+  "🇬🇪 Georgia",
+  "🇦🇲 Armenia",
+
+  "🇺🇦 Ukraine",
+  "🇲🇩 Moldova",
+
+  "🇮🇳 India",
+  "🇨🇳 China",
+  "🇰🇷 South Korea",
+  "🇯🇵 Japan",
+
+  "🇹🇷 Türkiye",
+  "🇦🇪 UAE",
+
+  "🇺🇸 USA",
+  "🇨🇦 Canada",
+  "🇬🇧 UK",
+
+  "🇩🇪 Germany",
+  "🇫🇷 France",
+  "🇮🇹 Italy",
+  "🇪🇸 Spain",
+
+  "Другая страна",
+];
+
+const targetCountryOptions = [
   "🇺🇸 USA",
   "🇬🇧 UK",
   "🇨🇦 Canada",
-  "🇪🇺 Europe",
-  "🇰🇷 Korea",
+  "🇩🇪 Germany",
+  "🇫🇷 France",
+  "🇮🇹 Italy",
+  "🇳🇱 Netherlands",
+  "🇨🇭 Switzerland",
+
+  "🇰🇷 South Korea",
   "🇭🇰 Hong Kong",
   "🇸🇬 Singapore",
   "🇦🇺 Australia",
   "🇯🇵 Japan",
   "🇦🇪 UAE",
+
+  "🇹🇷 Türkiye",
+
+  "Не определился",
+];
+
+const gpaScaleOptions = [
+  "4",
+  "5",
+  "10",
+  "20",
+  "100",
 ];
 
 const budgetOptions = [
@@ -107,133 +159,444 @@ const portfolioOptions = [
   "Nothing yet",
 ];
 
-/* =========================
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const normalizeNumber = (
+  value: string
+) => {
+  return value
+    .trim()
+    .replace(",", ".");
+};
+
+const cleanCountry = (
+  value: string
+) => {
+  return value
+    .replace(
+      /^[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u,
+      ""
+    )
+    .trim();
+};
+
+/* =========================================================
    SCREEN
-========================= */
+========================================================= */
 
 export default function QuestionnaireScreen() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const scrollRef =
-    useRef<ScrollView>(null);
+    useRef<ScrollView>(
+      null
+    );
 
-  const [maxStep, setMaxStep] =
+  /* =======================================================
+     PROGRESS
+  ======================================================= */
+
+  const [
+    maxStep,
+    setMaxStep,
+  ] =
     useState(1);
 
-  const [grade, setGrade] =
-    useState<string | null>(null);
+  const totalSteps =
+    9;
 
-  const [interests, setInterests] =
-    useState<string[]>([]);
+  /* =======================================================
+     EDUCATION
+  ======================================================= */
 
-  const [gpa, setGpa] =
+  const [
+    grade,
+    setGrade,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    schoolCountry,
+    setSchoolCountry,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    citizenshipCountry,
+    setCitizenshipCountry,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  /* =======================================================
+     INTERESTS
+  ======================================================= */
+
+  const [
+    interests,
+    setInterests,
+  ] =
+    useState<
+      string[]
+    >([]);
+
+  /* =======================================================
+     GPA
+  ======================================================= */
+
+  const [
+    gpa,
+    setGpa,
+  ] =
     useState("");
 
-  const [ielts, setIelts] =
+  const [
+    gpaScale,
+    setGpaScale,
+  ] =
     useState("");
 
-  const [sat, setSat] =
+  const [
+    gpaError,
+    setGpaError,
+  ] =
     useState("");
 
-  const [noExams, setNoExams] =
+  /* =======================================================
+     EXAMS
+  ======================================================= */
+
+  const [
+    ielts,
+    setIelts,
+  ] =
+    useState("");
+
+  const [
+    sat,
+    setSat,
+  ] =
+    useState("");
+
+  const [
+    noExams,
+    setNoExams,
+  ] =
     useState(false);
 
-  const [countries, setCountries] =
-    useState<string[]>([]);
+  const [
+    ieltsError,
+    setIeltsError,
+  ] =
+    useState("");
 
-  const [budget, setBudget] =
-    useState<string | null>(null);
+  const [
+    satError,
+    setSatError,
+  ] =
+    useState("");
+
+  /* =======================================================
+     TARGET COUNTRIES
+  ======================================================= */
+
+  const [
+    targetCountries,
+    setTargetCountries,
+  ] =
+    useState<
+      string[]
+    >([]);
+
+  /* =======================================================
+     FINANCE
+  ======================================================= */
+
+  const [
+    budget,
+    setBudget,
+  ] =
+    useState<
+      string | null
+    >(null);
 
   const [
     needsScholarship,
     setNeedsScholarship,
-  ] = useState(false);
+  ] =
+    useState(false);
 
-  const [portfolio, setPortfolio] =
-    useState<string[]>([]);
+  /* =======================================================
+     PORTFOLIO
+  ======================================================= */
+
+  const [
+    portfolio,
+    setPortfolio,
+  ] =
+    useState<
+      string[]
+    >([]);
 
   const [
     portfolioDescriptions,
     setPortfolioDescriptions,
-  ] = useState<
-    Record<string, string>
-  >({});
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
 
-  const [saving, setSaving] =
+  /* =======================================================
+     SAVE
+  ======================================================= */
+
+  const [
+    saving,
+    setSaving,
+  ] =
     useState(false);
 
-  const [saveError, setSaveError] =
+  const [
+    saveError,
+    setSaveError,
+  ] =
     useState("");
 
-  const totalSteps = 8;
+  /* =======================================================
+     REVEAL NEXT STEP
+  ======================================================= */
 
-  /* =========================
-     VALIDATION
-  ========================= */
-
-  const normalizeNumber = (
-    value: string
+  const revealStep = (
+    step: number
   ) => {
-    return value
-      .trim()
-      .replace(",", ".");
-  };
-
-  /* GPA: 0 - 5 */
-
-  const isValidGPAValue = (
-    value: string
-  ) => {
-    const normalized =
-      normalizeNumber(value);
-
-    if (!normalized) {
-      return false;
+    if (
+      step <= maxStep
+    ) {
+      return;
     }
 
+    setMaxStep(
+      step
+    );
+
+    setTimeout(
+      () => {
+        scrollRef.current?.scrollToEnd(
+          {
+            animated:
+              true,
+          }
+        );
+      },
+      220
+    );
+  };
+
+  /* =======================================================
+     MULTI SELECT
+  ======================================================= */
+
+  const toggleMulti = (
+    item: string,
+    selected: string[],
+    setter: (
+      items: string[]
+    ) => void
+  ) => {
     if (
-      !/^\d+(\.\d+)?$/.test(
-        normalized
+      item ===
+      "Не определился"
+    ) {
+      setter(
+        selected.includes(
+          item
+        )
+          ? []
+          : [item]
+      );
+
+      return;
+    }
+
+    const withoutUnknown =
+      selected.filter(
+        (value) =>
+          value !==
+          "Не определился"
+      );
+
+    if (
+      withoutUnknown.includes(
+        item
       )
+    ) {
+      setter(
+        withoutUnknown.filter(
+          (value) =>
+            value !== item
+        )
+      );
+    } else {
+      setter([
+        ...withoutUnknown,
+        item,
+      ]);
+    }
+  };
+
+  /* =======================================================
+     GPA VALIDATION
+  ======================================================= */
+
+  const isValidGPA = (
+    value: string,
+    scale: string
+  ) => {
+    const normalizedValue =
+      normalizeNumber(
+        value
+      );
+
+    const normalizedScale =
+      normalizeNumber(
+        scale
+      );
+
+    if (
+      !normalizedValue ||
+      !normalizedScale
     ) {
       return false;
     }
 
     const score =
-      Number(normalized);
+      Number(
+        normalizedValue
+      );
 
-    return (
-      !Number.isNaN(score) &&
-      score >= 0 &&
-      score <= 5
-    );
+    const maximum =
+      Number(
+        normalizedScale
+      );
+
+    if (
+      !Number.isFinite(
+        score
+      ) ||
+      !Number.isFinite(
+        maximum
+      )
+    ) {
+      return false;
+    }
+
+    if (
+      maximum <= 0 ||
+      maximum > 100
+    ) {
+      return false;
+    }
+
+    if (
+      score < 0 ||
+      score > maximum
+    ) {
+      return false;
+    }
+
+    return true;
   };
 
-  /* IELTS: 0 - 9, шаг 0.5 */
+  const validateGPA =
+    () => {
+      if (
+        !gpa.trim() ||
+        !gpaScale.trim()
+      ) {
+        setGpaError(
+          "Укажи и среднюю оценку, и максимальную шкалу."
+        );
+
+        return false;
+      }
+
+      if (
+        !isValidGPA(
+          gpa,
+          gpaScale
+        )
+      ) {
+        setGpaError(
+          "Проверь GPA: средняя оценка не может быть выше максимальной шкалы. Например: 4.8 / 5."
+        );
+
+        return false;
+      }
+
+      setGpaError("");
+
+      return true;
+    };
+
+  const tryRevealAfterGPA = (
+    nextGpa: string,
+    nextScale: string
+  ) => {
+    if (
+      isValidGPA(
+        nextGpa,
+        nextScale
+      )
+    ) {
+      setGpaError("");
+
+      revealStep(5);
+    }
+  };
+
+  /* =======================================================
+     IELTS VALIDATION
+  ======================================================= */
 
   const isValidIELTSValue = (
     value: string
   ) => {
     const normalized =
-      normalizeNumber(value);
-
-    if (!normalized) {
-      return false;
-    }
+      normalizeNumber(
+        value
+      );
 
     if (
-      !/^\d+(\.\d+)?$/.test(
-        normalized
-      )
+      !normalized
     ) {
       return false;
     }
 
     const score =
-      Number(normalized);
+      Number(
+        normalized
+      );
 
     if (
-      Number.isNaN(score) ||
+      !Number.isFinite(
+        score
+      )
+    ) {
+      return false;
+    }
+
+    if (
       score < 0 ||
       score > 9
     ) {
@@ -245,7 +608,29 @@ export default function QuestionnaireScreen() {
     );
   };
 
-  /* SAT: 400 - 1600, шаг 10 */
+  const validateIELTS = (
+    value: string
+  ) => {
+    if (
+      isValidIELTSValue(
+        value
+      )
+    ) {
+      setIeltsError("");
+
+      return true;
+    }
+
+    setIeltsError(
+      "IELTS должен быть от 0 до 9 с шагом 0.5. Например: 6.5, 7, 7.5."
+    );
+
+    return false;
+  };
+
+  /* =======================================================
+     SAT VALIDATION
+  ======================================================= */
 
   const isValidSATValue = (
     value: string
@@ -262,135 +647,165 @@ export default function QuestionnaireScreen() {
     }
 
     const score =
-      Number(normalized);
+      Number(
+        normalized
+      );
+
+    if (
+      score < 400 ||
+      score > 1600
+    ) {
+      return false;
+    }
 
     return (
-      score >= 400 &&
-      score <= 1600 &&
-      score % 10 === 0
+      score % 10 ===
+      0
     );
   };
 
-  /* =========================
-     CURRENT VALIDITY
-  ========================= */
+  const validateSAT = (
+    value: string
+  ) => {
+    if (
+      isValidSATValue(
+        value
+      )
+    ) {
+      setSatError("");
 
-  const gpaInvalid =
-    gpa.trim() !== "" &&
-    !isValidGPAValue(gpa);
+      return true;
+    }
 
-  const gpaReady =
-    isValidGPAValue(gpa);
+    setSatError(
+      "SAT должен быть от 400 до 1600 с шагом 10. Например: 1200, 1310, 1450."
+    );
 
-  const ieltsInvalid =
-    !noExams &&
-    ielts.trim() !== "" &&
-    !isValidIELTSValue(ielts);
+    return false;
+  };
 
-  const satInvalid =
-    !noExams &&
-    sat.trim() !== "" &&
-    !isValidSATValue(sat);
+  /* =======================================================
+     EXAMS READY
+  ======================================================= */
 
   const hasAtLeastOneExam =
-    ielts.trim() !== "" ||
-    sat.trim() !== "";
+    ielts.trim() !==
+      "" ||
+    sat.trim() !==
+      "";
 
   const examsReady =
     noExams ||
     (
       hasAtLeastOneExam &&
-
       (
-        ielts.trim() === "" ||
+        ielts.trim() ===
+          "" ||
         isValidIELTSValue(
           ielts
         )
       ) &&
-
       (
-        sat.trim() === "" ||
+        sat.trim() ===
+          "" ||
         isValidSATValue(
           sat
         )
       )
     );
 
-  /* =========================
-     AUTO OPEN NEXT BLOCK
-  ========================= */
+  const validateAndRevealExams =
+    () => {
+      if (
+        noExams
+      ) {
+        setIeltsError("");
+        setSatError("");
 
-  const revealStep = (
-    step: number
-  ) => {
-    if (step <= maxStep) {
-      return;
-    }
+        revealStep(6);
 
-    setMaxStep(step);
+        return;
+      }
 
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({
-        animated: true,
-      });
-    }, 250);
-  };
+      if (
+        !hasAtLeastOneExam
+      ) {
+        return;
+      }
 
-  /* =========================
-     MULTI SELECT
-  ========================= */
+      let valid =
+        true;
 
-  const toggleMulti = (
-    item: string,
-    selected: string[],
-    setter: (
-      items: string[]
-    ) => void
-  ) => {
-    if (
-      selected.includes(item)
-    ) {
-      setter(
-        selected.filter(
-          (value) =>
-            value !== item
-        )
-      );
-    } else {
-      setter([
-        ...selected,
-        item,
-      ]);
-    }
-  };
+      if (
+        ielts.trim()
+      ) {
+        if (
+          !validateIELTS(
+            ielts
+          )
+        ) {
+          valid =
+            false;
+        }
+      } else {
+        setIeltsError("");
+      }
 
-  /* =========================
+      if (
+        sat.trim()
+      ) {
+        if (
+          !validateSAT(
+            sat
+          )
+        ) {
+          valid =
+            false;
+        }
+      } else {
+        setSatError("");
+      }
+
+      if (
+        valid
+      ) {
+        revealStep(6);
+      }
+    };
+
+  /* =======================================================
      PORTFOLIO
-  ========================= */
+  ======================================================= */
 
   const togglePortfolio = (
     item: string
   ) => {
     if (
-      item === "Nothing yet"
+      item ===
+      "Nothing yet"
     ) {
       if (
         portfolio.includes(
           "Nothing yet"
         )
       ) {
-        setPortfolio([]);
+        setPortfolio(
+          []
+        );
       } else {
-        setPortfolio([
-          "Nothing yet",
-        ]);
+        setPortfolio(
+          [
+            "Nothing yet",
+          ]
+        );
 
         setPortfolioDescriptions(
           {}
         );
       }
 
-      revealStep(8);
+      revealStep(9);
+
       return;
     }
 
@@ -402,12 +817,15 @@ export default function QuestionnaireScreen() {
       );
 
     if (
-      updated.includes(item)
+      updated.includes(
+        item
+      )
     ) {
       updated =
         updated.filter(
           (value) =>
-            value !== item
+            value !==
+            item
         );
 
       setPortfolioDescriptions(
@@ -416,7 +834,9 @@ export default function QuestionnaireScreen() {
             ...old,
           };
 
-          delete copy[item];
+          delete copy[
+            item
+          ];
 
           return copy;
         }
@@ -428,120 +848,241 @@ export default function QuestionnaireScreen() {
       ];
     }
 
-    setPortfolio(updated);
+    setPortfolio(
+      updated
+    );
 
     if (
-      updated.length > 0
+      updated.length >
+      0
     ) {
-      revealStep(8);
+      revealStep(9);
     }
   };
 
-  /* =========================
-     SAVE QUESTIONNAIRE
-  ========================= */
+  /* =======================================================
+     FINAL VALIDATION + SAVE
+  ======================================================= */
 
-  const finishQuestionnaire =
+  const saveQuestionnaire =
     async () => {
+      if (
+        saving
+      ) {
+        return;
+      }
+
       setSaveError("");
 
-      if (!grade) {
+      if (
+        !grade
+      ) {
         setSaveError(
           "Выбери класс."
         );
+
         return;
       }
 
       if (
-        interests.length === 0
+        !schoolCountry
       ) {
         setSaveError(
-          "Выбери хотя бы одно направление."
+          "Укажи страну, где ты сейчас учишься."
         );
-        return;
-      }
 
-      if (!gpaReady) {
-        return;
-      }
-
-      if (!examsReady) {
         return;
       }
 
       if (
-        countries.length === 0
+        !citizenshipCountry
       ) {
         setSaveError(
-          "Выбери хотя бы одну страну."
+          "Укажи гражданство."
         );
-        return;
-      }
 
-      if (!budget) {
-        setSaveError(
-          "Выбери бюджет."
-        );
         return;
       }
 
       if (
-        portfolio.length === 0
+        interests.length ===
+        0
       ) {
         setSaveError(
-          "Выбери вариант портфолио."
+          "Выбери хотя бы одно направление интересов."
         );
+
         return;
       }
+
+      if (
+        !validateGPA()
+      ) {
+        setSaveError(
+          "Проверь GPA."
+        );
+
+        return;
+      }
+
+      if (
+        !examsReady
+      ) {
+        setSaveError(
+          "Проверь результаты экзаменов или выбери «Ещё не сдавал»."
+        );
+
+        return;
+      }
+
+      if (
+        targetCountries.length ===
+        0
+      ) {
+        setSaveError(
+          "Выбери хотя бы одну страну поступления."
+        );
+
+        return;
+      }
+
+      if (
+        !budget
+      ) {
+        setSaveError(
+          "Выбери примерный годовой бюджет."
+        );
+
+        return;
+      }
+
+      if (
+        portfolio.length ===
+        0
+      ) {
+        setSaveError(
+          "Укажи, что уже есть в портфолио, или выбери «Nothing yet»."
+        );
+
+        return;
+      }
+
+      setSaving(true);
 
       try {
-        setSaving(true);
-
-        const questionnaireData = {
-          grade,
-
-          interests,
-
-          gpa:
+        const normalizedGpa =
+          Number(
             normalizeNumber(
               gpa
-            ),
+            )
+          );
 
-          noExams,
+        const normalizedScale =
+          Number(
+            normalizeNumber(
+              gpaScale
+            )
+          );
 
-          ielts:
-            noExams ||
-            !ielts.trim()
-              ? null
-              : Number(
-                  normalizeNumber(
-                    ielts
-                  )
-                ),
+        const normalizedIELTS =
+          noExams ||
+          !ielts.trim()
+            ? null
+            : Number(
+                normalizeNumber(
+                  ielts
+                )
+              );
 
-          sat:
-            noExams ||
-            !sat.trim()
-              ? null
-              : Number(
-                  sat.trim()
-                ),
+        const normalizedSAT =
+          noExams ||
+          !sat.trim()
+            ? null
+            : Number(
+                sat.trim()
+              );
 
-          countries,
+        const cleanedSchoolCountry =
+          cleanCountry(
+            schoolCountry
+          );
 
-          budget,
+        const cleanedCitizenship =
+          cleanCountry(
+            citizenshipCountry
+          );
 
-          needsScholarship,
+        const cleanedTargets =
+          targetCountries.map(
+            cleanCountry
+          );
 
-          portfolio,
+        const questionnaireData =
+          {
+            grade,
 
-          portfolioDescriptions,
-        };
+            interests,
 
-        console.log(
-          "QUESTIONNAIRE DATA:",
-          questionnaireData
-        );
+            /* =================
+               GPA
+            ================= */
+
+            gpa:
+              normalizedGpa,
+
+            gpaScale:
+              normalizedScale,
+
+            /* =================
+               LOCATION
+            ================= */
+
+            schoolCountry:
+              cleanedSchoolCountry,
+
+            citizenshipCountry:
+              cleanedCitizenship,
+
+            targetCountries:
+              cleanedTargets,
+
+            /*
+              Временно сохраняем countries,
+              потому что текущий home.tsx
+              и AI ещё читают старое поле.
+            */
+
+            countries:
+              targetCountries,
+
+            /* =================
+               EXAMS
+            ================= */
+
+            noExams,
+
+            ielts:
+              normalizedIELTS,
+
+            sat:
+              normalizedSAT,
+
+            /* =================
+               FINANCE
+            ================= */
+
+            budget,
+
+            needsScholarship,
+
+            /* =================
+               PORTFOLIO
+            ================= */
+
+            portfolio,
+
+            portfolioDescriptions,
+          };
 
         const {
           data,
@@ -559,20 +1100,25 @@ export default function QuestionnaireScreen() {
             }
           );
 
-        if (error) {
+        if (
+          error
+        ) {
           throw error;
         }
 
-        console.log(
-          "QUESTIONNAIRE SAVED:",
-          data.user
-        );
+        if (
+          !data.user
+        ) {
+          throw new Error(
+            "Профиль не был сохранён."
+          );
+        }
 
         router.replace(
           "/home"
         );
       } catch (
-        error: any
+        error
       ) {
         console.error(
           "QUESTIONNAIRE SAVE ERROR:",
@@ -580,33 +1126,46 @@ export default function QuestionnaireScreen() {
         );
 
         setSaveError(
-          error?.message ||
-            "Не удалось сохранить анкету."
+          error instanceof
+            Error
+            ? error.message
+            : "Не удалось сохранить профиль."
         );
       } finally {
-        setSaving(false);
+        setSaving(
+          false
+        );
       }
     };
 
-  /* =========================
+  /* =======================================================
      PROGRESS
-  ========================= */
+  ======================================================= */
 
   const progress =
     Math.min(
       (
         maxStep /
         totalSteps
-      ) * 100,
+      ) *
+        100,
       100
     );
 
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
     <SafeAreaView
-      style={styles.safe}
+      style={
+        styles.safe
+      }
     >
       <ScrollView
-        ref={scrollRef}
+        ref={
+          scrollRef
+        }
         contentContainerStyle={
           styles.content
         }
@@ -615,10 +1174,14 @@ export default function QuestionnaireScreen() {
         }
         keyboardShouldPersistTaps="handled"
       >
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <View
-          style={styles.header}
+          style={
+            styles.header
+          }
         >
           <Pressable
             onPress={() =>
@@ -653,7 +1216,9 @@ export default function QuestionnaireScreen() {
           </Pressable>
 
           <View
-            style={styles.logo}
+            style={
+              styles.logo
+            }
           >
             <View
               style={
@@ -702,15 +1267,22 @@ export default function QuestionnaireScreen() {
                 maxStep,
                 totalSteps
               )}
-              /{totalSteps}
+              /
+              {
+                totalSteps
+              }
             </Text>
           </View>
         </View>
 
-        {/* INTRO */}
+        {/* =================================================
+            INTRO
+        ================================================= */}
 
         <View
-          style={styles.intro}
+          style={
+            styles.intro
+          }
         >
           <Text
             style={
@@ -733,10 +1305,7 @@ export default function QuestionnaireScreen() {
               styles.mainDescription
             }
           >
-            Каждый ответ помогает
-            лучше понять твои цели и
-            построить персональный
-            маршрут поступления.
+            Чем точнее данные, тем точнее UniPath сможет анализировать твой профиль, университеты, scholarships и возможности.
           </Text>
 
           <View
@@ -747,6 +1316,7 @@ export default function QuestionnaireScreen() {
             <View
               style={[
                 styles.progressFill,
+
                 {
                   width:
                     `${progress}%`,
@@ -756,13 +1326,15 @@ export default function QuestionnaireScreen() {
           </View>
         </View>
 
-        {/* STEP 1 */}
+        {/* =================================================
+            01 GRADE
+        ================================================= */}
 
         <QuestionCard
           number="01"
           category="EDUCATION"
           title="В каком ты классе?"
-          description="Выбери текущий класс или статус обучения."
+          description="Выбери текущий класс. Это позволит UniPath правильно понимать твой admissions timeline."
         >
           <View
             style={
@@ -772,13 +1344,21 @@ export default function QuestionnaireScreen() {
             {gradeOptions.map(
               (item) => (
                 <Choice
-                  key={item}
-                  label={item}
+                  key={
+                    item
+                  }
+                  label={
+                    item
+                  }
                   selected={
-                    grade === item
+                    grade ===
+                    item
                   }
                   onPress={() => {
-                    setGrade(item);
+                    setGrade(
+                      item
+                    );
+
                     revealStep(
                       2
                     );
@@ -789,14 +1369,181 @@ export default function QuestionnaireScreen() {
           </View>
         </QuestionCard>
 
-        {/* STEP 2 */}
+        {/* =================================================
+            02 STUDENT CONTEXT
+        ================================================= */}
 
-        {maxStep >= 2 && (
+        {maxStep >=
+          2 && (
           <QuestionCard
             number="02"
+            category="BACKGROUND"
+            title="Откуда ты подаёшься?"
+            description="Не путай это со странами поступления. Эти данные нужны для eligibility scholarships, research programs и других возможностей."
+          >
+            <Text
+              style={
+                styles.sectionLabel
+              }
+            >
+              ГДЕ ТЫ СЕЙЧАС УЧИШЬСЯ?
+            </Text>
+
+            <View
+              style={
+                styles.options
+              }
+            >
+              {studentCountryOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      `school-${item}`
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      schoolCountry ===
+                      item
+                    }
+                    onPress={() => {
+                      setSchoolCountry(
+                        item
+                      );
+
+                      if (
+                        citizenshipCountry
+                      ) {
+                        revealStep(
+                          3
+                        );
+                      }
+                    }}
+                  />
+                )
+              )}
+            </View>
+
+            <View
+              style={
+                styles.countryDivider
+              }
+            />
+
+            <Text
+              style={
+                styles.sectionLabel
+              }
+            >
+              ТВОЁ ГРАЖДАНСТВО
+            </Text>
+
+            {!!schoolCountry && (
+              <Pressable
+                onPress={() => {
+                  setCitizenshipCountry(
+                    schoolCountry
+                  );
+
+                  revealStep(
+                    3
+                  );
+                }}
+                style={({
+                  pressed,
+                }) => [
+                  styles.sameCountryButton,
+
+                  pressed &&
+                    styles.pressed,
+                ]}
+              >
+                <Text
+                  style={
+                    styles.sameCountryText
+                  }
+                >
+                  То же, что страна обучения
+                </Text>
+              </Pressable>
+            )}
+
+            <View
+              style={
+                styles.options
+              }
+            >
+              {studentCountryOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      `citizenship-${item}`
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      citizenshipCountry ===
+                      item
+                    }
+                    onPress={() => {
+                      setCitizenshipCountry(
+                        item
+                      );
+
+                      if (
+                        schoolCountry
+                      ) {
+                        revealStep(
+                          3
+                        );
+                      }
+                    }}
+                  />
+                )
+              )}
+            </View>
+
+            <View
+              style={
+                styles.infoBox
+              }
+            >
+              <Text
+                style={
+                  styles.infoTitle
+                }
+              >
+                Почему UniPath спрашивает это?
+              </Text>
+
+              <Text
+                style={
+                  styles.infoText
+                }
+              >
+                Позже система сможет проверять, доступна ли конкретная scholarship, research opportunity или программа именно для ученика с твоим гражданством и образовательным контекстом.
+              </Text>
+            </View>
+          </QuestionCard>
+        )}
+
+        {/* =================================================
+            03 INTERESTS
+        ================================================= */}
+
+        {maxStep >=
+          3 && (
+          <QuestionCard
+            number="03"
             category="INTERESTS"
             title="Что тебе интересно?"
-            description="Можно выбрать несколько направлений."
+            description="Можно выбрать несколько академических направлений."
           >
             <View
               style={
@@ -804,13 +1551,21 @@ export default function QuestionnaireScreen() {
               }
             >
               {interestOptions.map(
-                (item) => (
+                (
+                  item
+                ) => (
                   <Choice
-                    key={item}
-                    label={item}
-                    selected={interests.includes(
+                    key={
                       item
-                    )}
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      interests.includes(
+                        item
+                      )
+                    }
                     onPress={() => {
                       toggleMulti(
                         item,
@@ -819,7 +1574,7 @@ export default function QuestionnaireScreen() {
                       );
 
                       revealStep(
-                        3
+                        4
                       );
                     }}
                   />
@@ -829,780 +1584,985 @@ export default function QuestionnaireScreen() {
           </QuestionCard>
         )}
 
-        {/* STEP 3 */}
+        {/* =================================================
+            04 GPA
+        ================================================= */}
 
-        {maxStep >= 3 && (
+        {maxStep >=
+          4 && (
           <QuestionCard
-            number="03"
+            number="04"
             category="ACADEMICS"
-            title="Какая у тебя успеваемость?"
-            description="Укажи среднюю оценку по шкале от 0 до 5."
+            title="Какая у тебя средняя оценка?"
+            description="Укажи свой результат и максимальную шкалу отдельно."
           >
             <View
-              style={[
-                styles.inputBlock,
+              style={
+                styles.gpaContainer
+              }
+            >
+              <View
+                style={
+                  styles.gpaField
+                }
+              >
+                <Text
+                  style={
+                    styles.inputLabel
+                  }
+                >
+                  Средняя оценка
+                </Text>
 
-                gpaInvalid &&
-                  styles.invalidField,
-              ]}
+                <TextInput
+                  value={
+                    gpa
+                  }
+                  onChangeText={(
+                    value
+                  ) => {
+                    const cleaned =
+                      value.replace(
+                        /[^0-9.,]/g,
+                        ""
+                      );
+
+                    setGpa(
+                      cleaned
+                    );
+
+                    setGpaError(
+                      ""
+                    );
+
+                    tryRevealAfterGPA(
+                      cleaned,
+                      gpaScale
+                    );
+                  }}
+                  onBlur={
+                    validateGPA
+                  }
+                  placeholder="4.8"
+                  placeholderTextColor="#9CA79F"
+                  keyboardType="decimal-pad"
+                  style={[
+                    styles.gpaInput,
+
+                    !!gpaError &&
+                      styles.inputError,
+                  ]}
+                />
+              </View>
+
+              <Text
+                style={
+                  styles.gpaSlash
+                }
+              >
+                /
+              </Text>
+
+              <View
+                style={
+                  styles.gpaField
+                }
+              >
+                <Text
+                  style={
+                    styles.inputLabel
+                  }
+                >
+                  Максимальная шкала
+                </Text>
+
+                <TextInput
+                  value={
+                    gpaScale
+                  }
+                  onChangeText={(
+                    value
+                  ) => {
+                    const cleaned =
+                      value.replace(
+                        /[^0-9.,]/g,
+                        ""
+                      );
+
+                    setGpaScale(
+                      cleaned
+                    );
+
+                    setGpaError(
+                      ""
+                    );
+
+                    tryRevealAfterGPA(
+                      gpa,
+                      cleaned
+                    );
+                  }}
+                  onBlur={
+                    validateGPA
+                  }
+                  placeholder="5"
+                  placeholderTextColor="#9CA79F"
+                  keyboardType="decimal-pad"
+                  style={[
+                    styles.gpaInput,
+
+                    !!gpaError &&
+                      styles.inputError,
+                  ]}
+                />
+              </View>
+            </View>
+
+            <Text
+              style={
+                styles.quickScaleLabel
+              }
+            >
+              Быстро выбрать шкалу
+            </Text>
+
+            <View
+              style={
+                styles.options
+              }
+            >
+              {gpaScaleOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      item
+                    }
+                    label={
+                      `из ${item}`
+                    }
+                    selected={
+                      gpaScale ===
+                      item
+                    }
+                    onPress={() => {
+                      setGpaScale(
+                        item
+                      );
+
+                      setGpaError(
+                        ""
+                      );
+
+                      tryRevealAfterGPA(
+                        gpa,
+                        item
+                      );
+                    }}
+                  />
+                )
+              )}
+            </View>
+
+            {!!gpaError && (
+              <Text
+                style={
+                  styles.errorText
+                }
+              >
+                {
+                  gpaError
+                }
+              </Text>
+            )}
+
+            <View
+              style={
+                styles.gpaExample
+              }
             >
               <Text
                 style={
-                  styles.inputLabel
+                  styles.gpaExampleText
                 }
               >
-                GPA / средняя
-                оценка
-              </Text>
-
-              <TextInput
-                value={gpa}
-                onChangeText={(
-                  value
-                ) => {
-                  setGpa(value);
-
-                  if (
-                    isValidGPAValue(
-                      value
-                    )
-                  ) {
-                    revealStep(
-                      4
-                    );
-                  }
-                }}
-                placeholder="Например: 4.8"
-                placeholderTextColor="#9CA79F"
-                keyboardType="decimal-pad"
-                style={
-                  styles.input
-                }
-              />
-
-              <Text
-                style={
-                  styles.inputHelp
-                }
-              >
-                Введи число от 0 до
-                5. Например: 4.8
+                Например: 4.8 / 5, 3.7 / 4, 92 / 100. UniPath не будет автоматически считать 5 американским GPA — система будет знать исходную шкалу.
               </Text>
             </View>
           </QuestionCard>
         )}
 
-        {/* STEP 4 */}
+        {/* =================================================
+            05 EXAMS
+        ================================================= */}
 
-        {maxStep >= 4 &&
-          gpaReady && (
-            <QuestionCard
-              number="04"
-              category="EXAMS"
-              title="Какие экзамены ты уже сдавал?"
-              description="Если ещё не сдавал IELTS или SAT — это нормально."
+        {maxStep >=
+          5 &&
+          isValidGPA(
+            gpa,
+            gpaScale
+          ) && (
+          <QuestionCard
+            number="05"
+            category="EXAMS"
+            title="Какие экзамены ты уже сдавал?"
+            description="Указывай только реальные результаты. Если результатов пока нет — это нормально."
+          >
+            <View
+              style={
+                styles.switchBlock
+              }
             >
               <View
-                style={
-                  styles.switchBlock
-                }
+                style={{
+                  flex:
+                    1,
+                }}
               >
-                <View
-                  style={{
-                    flex: 1,
-                  }}
-                >
-                  <Text
-                    style={
-                      styles.switchTitle
-                    }
-                  >
-                    Ещё не сдавал
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.switchSubtitle
-                    }
-                  >
-                    У меня пока нет
-                    результатов
-                    экзаменов
-                  </Text>
-                </View>
-
-                <Switch
-                  value={
-                    noExams
+                <Text
+                  style={
+                    styles.switchTitle
                   }
-                  onValueChange={(
+                >
+                  Ещё не сдавал
+                </Text>
+
+                <Text
+                  style={
+                    styles.switchSubtitle
+                  }
+                >
+                  У меня пока нет IELTS или SAT результатов
+                </Text>
+              </View>
+
+              <Switch
+                value={
+                  noExams
+                }
+                onValueChange={(
+                  value
+                ) => {
+                  setNoExams(
                     value
-                  ) => {
-                    setNoExams(
-                      value
+                  );
+
+                  if (
+                    value
+                  ) {
+                    setIelts(
+                      ""
                     );
 
-                    if (
+                    setSat(
+                      ""
+                    );
+
+                    setIeltsError(
+                      ""
+                    );
+
+                    setSatError(
+                      ""
+                    );
+
+                    revealStep(
+                      6
+                    );
+                  }
+                }}
+                trackColor={{
+                  false:
+                    "#CCD4CE",
+
+                  true:
+                    "#9BC0A7",
+                }}
+                thumbColor={
+                  noExams
+                    ? COLORS.forest
+                    : "#FFFFFF"
+                }
+              />
+            </View>
+
+            {!noExams && (
+              <View
+                style={
+                  styles.examRow
+                }
+              >
+                <View
+                  style={
+                    styles.examBlock
+                  }
+                >
+                  <Text
+                    style={
+                      styles.examLabel
+                    }
+                  >
+                    IELTS
+                  </Text>
+
+                  <TextInput
+                    value={
+                      ielts
+                    }
+                    onChangeText={(
                       value
-                    ) {
+                    ) => {
+                      const cleaned =
+                        value.replace(
+                          /[^0-9.,]/g,
+                          ""
+                        );
+
                       setIelts(
+                        cleaned
+                      );
+
+                      setIeltsError(
                         ""
                       );
-
-                      setSat("");
-
-                      revealStep(
-                        5
-                      );
-                    }
-                  }}
-                  trackColor={{
-                    false:
-                      "#CCD4CE",
-
-                    true:
-                      "#9BC0A7",
-                  }}
-                  thumbColor={
-                    noExams
-                      ? COLORS.forest
-                      : "#FFFFFF"
-                  }
-                />
-              </View>
-
-              {!noExams && (
-                <View
-                  style={
-                    styles.examRow
-                  }
-                >
-                  {/* IELTS */}
-
-                  <View
-                    style={[
-                      styles.examBlock,
-
-                      ieltsInvalid &&
-                        styles.invalidField,
-                    ]}
-                  >
-                    <Text
-                      style={
-                        styles.examLabel
-                      }
-                    >
-                      IELTS
-                    </Text>
-
-                    <TextInput
-                      value={
-                        ielts
-                      }
-                      onChangeText={(
-                        value
-                      ) => {
-                        setIelts(
-                          value
-                        );
-
-                        const nextIELTSValid =
-                          value.trim() ===
-                            "" ||
-                          isValidIELTSValue(
-                            value
-                          );
-
-                        const currentSATValid =
-                          sat.trim() ===
-                            "" ||
-                          isValidSATValue(
-                            sat
-                          );
-
-                        const hasExam =
-                          value.trim() !==
-                            "" ||
-                          sat.trim() !==
-                            "";
-
-                        if (
-                          hasExam &&
-                          nextIELTSValid &&
-                          currentSATValid
-                        ) {
-                          revealStep(
-                            5
-                          );
-                        }
-                      }}
-                      placeholder="6.5"
-                      placeholderTextColor="#9CA79F"
-                      keyboardType="decimal-pad"
-                      style={
-                        styles.examInput
-                      }
-                    />
-                  </View>
-
-                  {/* SAT */}
-
-                  <View
-                    style={[
-                      styles.examBlock,
-
-                      satInvalid &&
-                        styles.invalidField,
-                    ]}
-                  >
-                    <Text
-                      style={
-                        styles.examLabel
-                      }
-                    >
-                      SAT
-                    </Text>
-
-                    <TextInput
-                      value={sat}
-                      onChangeText={(
-                        value
-                      ) => {
-                        setSat(
-                          value
-                        );
-
-                        const nextSATValid =
-                          value.trim() ===
-                            "" ||
-                          isValidSATValue(
-                            value
-                          );
-
-                        const currentIELTSValid =
-                          ielts.trim() ===
-                            "" ||
-                          isValidIELTSValue(
-                            ielts
-                          );
-
-                        const hasExam =
-                          value.trim() !==
-                            "" ||
-                          ielts.trim() !==
-                            "";
-
-                        if (
-                          hasExam &&
-                          nextSATValid &&
-                          currentIELTSValid
-                        ) {
-                          revealStep(
-                            5
-                          );
-                        }
-                      }}
-                      placeholder="1320"
-                      placeholderTextColor="#9CA79F"
-                      keyboardType="number-pad"
-                      style={
-                        styles.examInput
-                      }
-                    />
-                  </View>
-                </View>
-              )}
-            </QuestionCard>
-          )}
-
-        {/* STEP 5 */}
-
-        {maxStep >= 5 &&
-          gpaReady &&
-          examsReady && (
-            <QuestionCard
-              number="05"
-              category="DESTINATIONS"
-              title="Где ты рассматриваешь обучение?"
-              description="Можно выбрать несколько стран."
-            >
-              <View
-                style={
-                  styles.options
-                }
-              >
-                {countryOptions.map(
-                  (item) => (
-                    <Choice
-                      key={
-                        item
-                      }
-                      label={
-                        item
-                      }
-                      selected={countries.includes(
-                        item
-                      )}
-                      onPress={() => {
-                        toggleMulti(
-                          item,
-                          countries,
-                          setCountries
-                        );
-
-                        revealStep(
-                          6
-                        );
-                      }}
-                    />
-                  )
-                )}
-              </View>
-            </QuestionCard>
-          )}
-
-        {/* STEP 6 */}
-
-        {maxStep >= 6 &&
-          gpaReady &&
-          examsReady && (
-            <QuestionCard
-              number="06"
-              category="FINANCES"
-              title="Какой бюджет ты рассматриваешь?"
-              description="Примерный годовой бюджет на обучение."
-            >
-              <View
-                style={
-                  styles.options
-                }
-              >
-                {budgetOptions.map(
-                  (item) => (
-                    <Choice
-                      key={
-                        item
-                      }
-                      label={
-                        item
-                      }
-                      selected={
-                        budget ===
-                        item
-                      }
-                      onPress={() => {
-                        setBudget(
-                          item
-                        );
-
-                        revealStep(
-                          7
-                        );
-                      }}
-                    />
-                  )
-                )}
-              </View>
-
-              <View
-                style={
-                  styles.scholarshipBlock
-                }
-              >
-                <View
-                  style={
-                    styles.moneyIcon
-                  }
-                >
-                  <Text
-                    style={
-                      styles.moneyIconText
-                    }
-                  >
-                    $
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    flex: 1,
-                  }}
-                >
-                  <Text
-                    style={
-                      styles.switchTitle
-                    }
-                  >
-                    Нужна
-                    scholarship /
-                    financial aid
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.switchSubtitle
-                    }
-                  >
-                    Будем учитывать
-                    это при подборе
-                    вузов
-                  </Text>
-                </View>
-
-                <Switch
-                  value={
-                    needsScholarship
-                  }
-                  onValueChange={
-                    setNeedsScholarship
-                  }
-                  trackColor={{
-                    false:
-                      "#CCD4CE",
-
-                    true:
-                      "#9BC0A7",
-                  }}
-                  thumbColor={
-                    needsScholarship
-                      ? COLORS.forest
-                      : "#FFFFFF"
-                  }
-                />
-              </View>
-            </QuestionCard>
-          )}
-
-        {/* STEP 7 */}
-
-        {maxStep >= 7 &&
-          gpaReady &&
-          examsReady && (
-            <QuestionCard
-              number="07"
-              category="PORTFOLIO"
-              title="Что уже есть в твоём портфолио?"
-              description="Выбери всё, чем ты уже занимался."
-            >
-              <View
-                style={
-                  styles.options
-                }
-              >
-                {portfolioOptions.map(
-                  (item) => (
-                    <Choice
-                      key={
-                        item
-                      }
-                      label={
-                        item
-                      }
-                      selected={portfolio.includes(
-                        item
-                      )}
-                      onPress={() =>
-                        togglePortfolio(
-                          item
-                        )
-                      }
-                    />
-                  )
-                )}
-              </View>
-            </QuestionCard>
-          )}
-
-        {/* STEP 8 */}
-
-        {maxStep >= 8 &&
-          gpaReady &&
-          examsReady && (
-            <QuestionCard
-              number="08"
-              category="YOUR EXPERIENCE"
-              title={
-                portfolio.includes(
-                  "Nothing yet"
-                )
-                  ? "Начнём строить портфолио с нуля"
-                  : "Расскажи подробнее о достижениях"
-              }
-              description={
-                portfolio.includes(
-                  "Nothing yet"
-                )
-                  ? "Это нормально. Позже сервис предложит подходящие активности."
-                  : "Каждое выбранное достижение можно описать отдельно."
-              }
-            >
-              {portfolio.includes(
-                "Nothing yet"
-              ) ? (
-                <View
-                  style={
-                    styles.emptyPortfolio
-                  }
-                >
-                  <View
-                    style={
-                      styles.emptyIcon
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.emptyIconText
-                      }
-                    >
-                      +
-                    </Text>
-                  </View>
-
-                  <View
-                    style={{
-                      flex: 1,
                     }}
-                  >
+                    onBlur={
+                      validateAndRevealExams
+                    }
+                    placeholder="6.5"
+                    placeholderTextColor="#9CA79F"
+                    keyboardType="decimal-pad"
+                    style={[
+                      styles.examInput,
+
+                      !!ieltsError &&
+                        styles.examInputError,
+                    ]}
+                  />
+
+                  {!!ieltsError && (
                     <Text
                       style={
-                        styles.emptyTitle
+                        styles.examError
                       }
                     >
-                      Пока нет
-                      портфолио
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.emptyText
+                      {
+                        ieltsError
                       }
-                    >
-                      Мы позже
-                      предложим
-                      олимпиады,
-                      исследования,
-                      проекты,
-                      волонтёрство и
-                      другие
-                      возможности.
                     </Text>
-                  </View>
-                </View>
-              ) : (
-                <View
-                  style={
-                    styles.achievementList
-                  }
-                >
-                  {portfolio.map(
-                    (
-                      item,
-                      index
-                    ) => (
-                      <View
-                        key={
-                          item
-                        }
-                        style={
-                          styles.achievementCard
-                        }
-                      >
-                        <View
-                          style={
-                            styles.achievementTop
-                          }
-                        >
-                          <View
-                            style={
-                              styles.achievementNumber
-                            }
-                          >
-                            <Text
-                              style={
-                                styles.achievementNumberText
-                              }
-                            >
-                              {index +
-                                1}
-                            </Text>
-                          </View>
-
-                          <View>
-                            <Text
-                              style={
-                                styles.achievementTitle
-                              }
-                            >
-                              {
-                                item
-                              }
-                            </Text>
-
-                            <Text
-                              style={
-                                styles.achievementSubtitle
-                              }
-                            >
-                              Опиши
-                              свой опыт
-                            </Text>
-                          </View>
-                        </View>
-
-                        <TextInput
-                          value={
-                            portfolioDescriptions[
-                              item
-                            ] ||
-                            ""
-                          }
-                          onChangeText={(
-                            value
-                          ) => {
-                            setPortfolioDescriptions(
-                              (
-                                old
-                              ) => ({
-                                ...old,
-
-                                [item]:
-                                  value,
-                              })
-                            );
-                          }}
-                          multiline
-                          textAlignVertical="top"
-                          placeholder={
-                            item ===
-                            "Olympiads"
-                              ? "Например: занял 2 место на городской олимпиаде..."
-                              : item ===
-                                "Research"
-                              ? "Например: провёл исследование по робототехнике..."
-                              : item ===
-                                "Volunteering"
-                              ? "Например: участвовал в экологическом волонтёрском проекте..."
-                              : item ===
-                                "Projects"
-                              ? "Например: создал приложение или инженерный проект..."
-                              : item ===
-                                "Startup"
-                              ? "Например: создал школьный стартап..."
-                              : "Кратко расскажи, что именно ты делал..."
-                          }
-                          placeholderTextColor="#9DA69F"
-                          maxLength={
-                            500
-                          }
-                          style={
-                            styles.achievementInput
-                          }
-                        />
-
-                        <Text
-                          style={
-                            styles.counter
-                          }
-                        >
-                          {
-                            (
-                              portfolioDescriptions[
-                                item
-                              ] ||
-                              ""
-                            )
-                              .length
-                          }
-                          /500
-                        </Text>
-                      </View>
-                    )
                   )}
                 </View>
-              )}
 
-              <View
-                style={
-                  styles.finishBlock
-                }
-              >
-                <Text
+                <View
                   style={
-                    styles.finishSmall
+                    styles.examBlock
                   }
                 >
-                  ПРОФИЛЬ ГОТОВ
-                </Text>
-
-                <Text
-                  style={
-                    styles.finishTitle
-                  }
-                >
-                  Теперь можно
-                  перейти к твоему
-                  маршруту
-                </Text>
-
-                <Text
-                  style={
-                    styles.finishDescription
-                  }
-                >
-                  Данные анкеты
-                  сохранятся в твоём
-                  аккаунте и будут
-                  использоваться в
-                  профиле и подборе
-                  университетов.
-                </Text>
-
-                {saveError ? (
                   <Text
                     style={
-                      styles.saveError
+                      styles.examLabel
                     }
                   >
-                    {saveError}
+                    SAT
                   </Text>
-                ) : null}
 
+                  <TextInput
+                    value={
+                      sat
+                    }
+                    onChangeText={(
+                      value
+                    ) => {
+                      const cleaned =
+                        value.replace(
+                          /\D/g,
+                          ""
+                        );
+
+                      setSat(
+                        cleaned
+                      );
+
+                      setSatError(
+                        ""
+                      );
+                    }}
+                    onBlur={
+                      validateAndRevealExams
+                    }
+                    placeholder="1320"
+                    placeholderTextColor="#9CA79F"
+                    keyboardType="number-pad"
+                    style={[
+                      styles.examInput,
+
+                      !!satError &&
+                        styles.examInputError,
+                    ]}
+                  />
+
+                  {!!satError && (
+                    <Text
+                      style={
+                        styles.examError
+                      }
+                    >
+                      {
+                        satError
+                      }
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {!noExams &&
+              hasAtLeastOneExam &&
+              examsReady && (
                 <Pressable
-                  onPress={
-                    finishQuestionnaire
-                  }
-                  disabled={
-                    saving
+                  onPress={() =>
+                    revealStep(
+                      6
+                    )
                   }
                   style={({
                     pressed,
                   }) => [
-                    styles.finishButton,
+                    styles.continueButton,
 
                     pressed &&
-                      styles.finishPressed,
-
-                    saving &&
-                      styles.finishButtonDisabled,
+                      styles.pressed,
                   ]}
                 >
                   <Text
                     style={
-                      styles.finishButtonText
+                      styles.continueButtonText
                     }
                   >
-                    {saving
-                      ? "СОХРАНЯЕМ..."
-                      : "ПЕРЕЙТИ К ПРОФИЛЮ →"}
+                    ПРОДОЛЖИТЬ →
                   </Text>
                 </Pressable>
+              )}
+          </QuestionCard>
+        )}
+
+        {/* =================================================
+            06 TARGET COUNTRIES
+        ================================================= */}
+
+        {maxStep >=
+          6 &&
+          examsReady && (
+          <QuestionCard
+            number="06"
+            category="DESTINATIONS"
+            title="Куда ты хочешь поступать?"
+            description="Это страны поступления, а не твоя текущая страна. Можно выбрать несколько."
+          >
+            <View
+              style={
+                styles.options
+              }
+            >
+              {targetCountryOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      item
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      targetCountries.includes(
+                        item
+                      )
+                    }
+                    onPress={() => {
+                      toggleMulti(
+                        item,
+                        targetCountries,
+                        setTargetCountries
+                      );
+
+                      revealStep(
+                        7
+                      );
+                    }}
+                  />
+                )
+              )}
+            </View>
+
+            <View
+              style={
+                styles.countryExplanation
+              }
+            >
+              <Text
+                style={
+                  styles.countryExplanationText
+                }
+              >
+                Например: если ты учишься в Казахстане, а выбрал USA здесь, UniPath понимает это как «ученик из Казахстана рассматривает США», а не как «ученик из США».
+              </Text>
+            </View>
+          </QuestionCard>
+        )}
+
+        {/* =================================================
+            07 FINANCES
+        ================================================= */}
+
+        {maxStep >=
+          7 &&
+          examsReady && (
+          <QuestionCard
+            number="07"
+            category="FINANCES"
+            title="Какой бюджет ты рассматриваешь?"
+            description="Укажи примерный годовой бюджет, который семья готова рассматривать."
+          >
+            <View
+              style={
+                styles.options
+              }
+            >
+              {budgetOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      item
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      budget ===
+                      item
+                    }
+                    onPress={() => {
+                      setBudget(
+                        item
+                      );
+
+                      revealStep(
+                        8
+                      );
+                    }}
+                  />
+                )
+              )}
+            </View>
+
+            <View
+              style={
+                styles.scholarshipBlock
+              }
+            >
+              <View
+                style={
+                  styles.moneyIcon
+                }
+              >
+                <Text
+                  style={
+                    styles.moneyIconText
+                  }
+                >
+                  $
+                </Text>
               </View>
-            </QuestionCard>
-          )}
+
+              <View
+                style={{
+                  flex:
+                    1,
+                }}
+              >
+                <Text
+                  style={
+                    styles.switchTitle
+                  }
+                >
+                  Нужна scholarship / financial aid
+                </Text>
+
+                <Text
+                  style={
+                    styles.switchSubtitle
+                  }
+                >
+                  UniPath будет учитывать это при подборе возможностей
+                </Text>
+              </View>
+
+              <Switch
+                value={
+                  needsScholarship
+                }
+                onValueChange={
+                  setNeedsScholarship
+                }
+                trackColor={{
+                  false:
+                    "#CCD4CE",
+
+                  true:
+                    "#9BC0A7",
+                }}
+                thumbColor={
+                  needsScholarship
+                    ? COLORS.forest
+                    : "#FFFFFF"
+                }
+              />
+            </View>
+          </QuestionCard>
+        )}
+
+        {/* =================================================
+            08 PORTFOLIO
+        ================================================= */}
+
+        {maxStep >=
+          8 &&
+          examsReady && (
+          <QuestionCard
+            number="08"
+            category="PORTFOLIO"
+            title="Что уже есть в твоём профиле?"
+            description="Выбери только то, чем ты действительно занимался."
+          >
+            <View
+              style={
+                styles.options
+              }
+            >
+              {portfolioOptions.map(
+                (
+                  item
+                ) => (
+                  <Choice
+                    key={
+                      item
+                    }
+                    label={
+                      item
+                    }
+                    selected={
+                      portfolio.includes(
+                        item
+                      )
+                    }
+                    onPress={() =>
+                      togglePortfolio(
+                        item
+                      )
+                    }
+                  />
+                )
+              )}
+            </View>
+          </QuestionCard>
+        )}
+
+        {/* =================================================
+            09 EXPERIENCE DETAILS
+        ================================================= */}
+
+        {maxStep >=
+          9 &&
+          examsReady && (
+          <QuestionCard
+            number="09"
+            category="YOUR EXPERIENCE"
+            title={
+              portfolio.includes(
+                "Nothing yet"
+              )
+                ? "Начнём строить профиль с нуля"
+                : "Расскажи подробнее о достижениях"
+            }
+            description={
+              portfolio.includes(
+                "Nothing yet"
+              )
+                ? "Это нормально. UniPath сможет показать, какие типы активностей стоит рассмотреть дальше."
+                : "Чем конкретнее описание, тем глубже AI сможет анализировать твой профиль."
+            }
+          >
+            {portfolio.includes(
+              "Nothing yet"
+            ) ? (
+              <View
+                style={
+                  styles.emptyPortfolio
+                }
+              >
+                <View
+                  style={
+                    styles.emptyIcon
+                  }
+                >
+                  <Text
+                    style={
+                      styles.emptyIconText
+                    }
+                  >
+                    +
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    flex:
+                      1,
+                  }}
+                >
+                  <Text
+                    style={
+                      styles.emptyTitle
+                    }
+                  >
+                    Пока ничего не указано
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.emptyText
+                    }
+                  >
+                    UniPath не будет считать это доказательством того, что у тебя вообще нет активностей. Он просто отметит, что информация пока отсутствует.
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View
+                style={
+                  styles.achievementList
+                }
+              >
+                {portfolio.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <View
+                      key={
+                        item
+                      }
+                      style={
+                        styles.achievementCard
+                      }
+                    >
+                      <View
+                        style={
+                          styles.achievementTop
+                        }
+                      >
+                        <View
+                          style={
+                            styles.achievementNumber
+                          }
+                        >
+                          <Text
+                            style={
+                              styles.achievementNumberText
+                            }
+                          >
+                            {
+                              index +
+                              1
+                            }
+                          </Text>
+                        </View>
+
+                        <View
+                          style={{
+                            flex:
+                              1,
+                          }}
+                        >
+                          <Text
+                            style={
+                              styles.achievementTitle
+                            }
+                          >
+                            {
+                              item
+                            }
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.achievementSubtitle
+                            }
+                          >
+                            Добавь конкретику: что, когда, уровень, результат и твой вклад
+                          </Text>
+                        </View>
+                      </View>
+
+                      <TextInput
+                        value={
+                          portfolioDescriptions[
+                            item
+                          ] ||
+                          ""
+                        }
+                        onChangeText={(
+                          value
+                        ) => {
+                          setPortfolioDescriptions(
+                            (
+                              old
+                            ) => ({
+                              ...old,
+
+                              [item]:
+                                value,
+                            })
+                          );
+                        }}
+                        multiline
+                        textAlignVertical="top"
+                        placeholder={
+                          item ===
+                          "Olympiads"
+                            ? "Например: Республиканская олимпиада по информатике, 2026, национальный этап, 2 место. Решал задачи по алгоритмам и структурам данных."
+                            : item ===
+                              "Research"
+                            ? "Например: исследовал..., моя роль..., получил результат..."
+                            : item ===
+                              "Projects"
+                            ? "Например: создал веб-приложение..., использовал..., моя роль..., ссылка..."
+                            : item ===
+                              "Hackathons"
+                            ? "Например: участвовал в..., команда..., мой вклад..., результат..."
+                            : "Название, год, уровень, твоя роль и конкретный результат..."
+                        }
+                        placeholderTextColor="#9DA69F"
+                        maxLength={
+                          700
+                        }
+                        style={
+                          styles.achievementInput
+                        }
+                      />
+
+                      <Text
+                        style={
+                          styles.counter
+                        }
+                      >
+                        {
+                          (
+                            portfolioDescriptions[
+                              item
+                            ] ||
+                            ""
+                          ).length
+                        }
+                        /700
+                      </Text>
+                    </View>
+                  )
+                )}
+              </View>
+            )}
+
+            <View
+              style={
+                styles.finishBlock
+              }
+            >
+              <Text
+                style={
+                  styles.finishSmall
+                }
+              >
+                ПРОФИЛЬ ГОТОВ
+              </Text>
+
+              <Text
+                style={
+                  styles.finishTitle
+                }
+              >
+                Теперь UniPath знает о тебе намного больше
+              </Text>
+
+              <Text
+                style={
+                  styles.finishDescription
+                }
+              >
+                Эти данные будут использоваться AI для анализа профиля, подбора университетов, scholarships, research opportunities и персонального roadmap.
+              </Text>
+
+              {!!saveError && (
+                <View
+                  style={
+                    styles.saveError
+                  }
+                >
+                  <Text
+                    style={
+                      styles.saveErrorText
+                    }
+                  >
+                    {
+                      saveError
+                    }
+                  </Text>
+                </View>
+              )}
+
+              <Pressable
+                disabled={
+                  saving
+                }
+                onPress={
+                  saveQuestionnaire
+                }
+                style={({
+                  pressed,
+                }) => [
+                  styles.finishButton,
+
+                  saving && {
+                    opacity:
+                      0.55,
+                  },
+
+                  pressed &&
+                    styles.finishPressed,
+                ]}
+              >
+                <Text
+                  style={
+                    styles.finishButtonText
+                  }
+                >
+                  {saving
+                    ? "СОХРАНЯЕМ..."
+                    : "СОХРАНИТЬ ПРОФИЛЬ →"}
+                </Text>
+              </Pressable>
+            </View>
+          </QuestionCard>
+        )}
 
         <View
           style={{
-            height: 70,
+            height:
+              70,
           }}
         />
       </ScrollView>
@@ -1610,9 +2570,9 @@ export default function QuestionnaireScreen() {
   );
 }
 
-/* =========================
-   COMPONENTS
-========================= */
+/* =========================================================
+   QUESTION CARD
+========================================================= */
 
 function QuestionCard({
   number,
@@ -1622,27 +2582,41 @@ function QuestionCard({
   children,
 }: {
   number: string;
+
   category: string;
+
   title: string;
+
   description: string;
-  children: React.ReactNode;
+
+  children:
+    React.ReactNode;
 }) {
   const fade =
     useRef(
-      new Animated.Value(0)
+      new Animated.Value(
+        0
+      )
     ).current;
 
-  React.useEffect(() => {
-    Animated.timing(
-      fade,
-      {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver:
-          true,
-      }
-    ).start();
-  }, []);
+  React.useEffect(
+    () => {
+      Animated.timing(
+        fade,
+        {
+          toValue:
+            1,
+
+          duration:
+            350,
+
+          useNativeDriver:
+            true,
+        }
+      ).start();
+    },
+    []
+  );
 
   return (
     <Animated.View
@@ -1650,7 +2624,8 @@ function QuestionCard({
         styles.questionCard,
 
         {
-          opacity: fade,
+          opacity:
+            fade,
         },
       ]}
     >
@@ -1664,7 +2639,9 @@ function QuestionCard({
             styles.questionNumber
           }
         >
-          {number}
+          {
+            number
+          }
         </Text>
 
         <Text
@@ -1672,7 +2649,9 @@ function QuestionCard({
             styles.questionCategory
           }
         >
-          {category}
+          {
+            category
+          }
         </Text>
       </View>
 
@@ -1681,7 +2660,9 @@ function QuestionCard({
           styles.questionTitle
         }
       >
-        {title}
+        {
+          title
+        }
       </Text>
 
       <Text
@@ -1689,7 +2670,9 @@ function QuestionCard({
           styles.questionDescription
         }
       >
-        {description}
+        {
+          description
+        }
       </Text>
 
       <View
@@ -1697,11 +2680,17 @@ function QuestionCard({
           styles.questionContent
         }
       >
-        {children}
+        {
+          children
+        }
       </View>
     </Animated.View>
   );
 }
+
+/* =========================================================
+   CHOICE
+========================================================= */
 
 function Choice({
   label,
@@ -1709,12 +2698,17 @@ function Choice({
   onPress,
 }: {
   label: string;
+
   selected: boolean;
-  onPress: () => void;
+
+  onPress:
+    () => void;
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={
+        onPress
+      }
       style={({
         pressed,
       }) => [
@@ -1743,221 +2737,414 @@ function Choice({
             styles.choiceTextSelected,
         ]}
       >
-        {label}
+        {
+          label
+        }
       </Text>
     </Pressable>
   );
 }
 
-/* =========================
+/* =========================================================
    STYLES
-========================= */
+========================================================= */
 
 const styles =
   StyleSheet.create({
     safe: {
       flex: 1,
+
       backgroundColor:
         COLORS.background,
     },
 
     content: {
-      width: "100%",
-      maxWidth: 900,
-      alignSelf: "center",
-      paddingHorizontal: 20,
-      paddingTop: 18,
+      width:
+        "100%",
+
+      maxWidth:
+        900,
+
+      alignSelf:
+        "center",
+
+      paddingHorizontal:
+        20,
+
+      paddingTop:
+        18,
     },
 
+    /* =====================================================
+       HEADER
+    ===================================================== */
+
     header: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "space-between",
-      marginBottom: 40,
+
+      marginBottom:
+        40,
     },
 
     backHome: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 13,
-      paddingVertical: 10,
-      borderRadius: 13,
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      paddingHorizontal:
+        13,
+
+      paddingVertical:
+        10,
+
+      borderRadius:
+        13,
+
       backgroundColor:
         COLORS.surface,
-      borderWidth: 1,
+
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
     },
 
     backArrow: {
-      color: COLORS.forest,
-      fontSize: 17,
-      marginRight: 6,
+      color:
+        COLORS.forest,
+
+      fontSize:
+        17,
+
+      marginRight:
+        6,
     },
 
     backHomeText: {
-      color: COLORS.forest,
-      fontSize: 11,
-      fontWeight: "800",
+      color:
+        COLORS.forest,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "800",
     },
 
     logo: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
     },
 
     logoMark: {
-      width: 40,
-      height: 40,
-      borderRadius: 13,
+      width:
+        40,
+
+      height:
+        40,
+
+      borderRadius:
+        13,
+
       backgroundColor:
         COLORS.forest,
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
-      marginRight: 10,
+
+      marginRight:
+        10,
     },
 
     logoLetter: {
-      color: "#FFFFFF",
-      fontSize: 19,
-      fontWeight: "900",
+      color:
+        "#FFFFFF",
+
+      fontSize:
+        19,
+
+      fontWeight:
+        "900",
     },
 
     logoName: {
-      color: COLORS.forest,
-      fontSize: 19,
-      fontWeight: "900",
+      color:
+        COLORS.forest,
+
+      fontSize:
+        19,
+
+      fontWeight:
+        "900",
     },
 
     logoSub: {
-      color: COLORS.muted,
-      fontSize: 8,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        8,
+
       textTransform:
         "uppercase",
-      letterSpacing: 1,
+
+      letterSpacing:
+        1,
     },
 
     stepCounter: {
       backgroundColor:
         COLORS.sage,
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
+
+      borderRadius:
+        999,
+
+      paddingHorizontal:
+        14,
+
+      paddingVertical:
+        9,
     },
 
     stepCounterText: {
-      color: COLORS.forest,
-      fontWeight: "800",
-      fontSize: 11,
+      color:
+        COLORS.forest,
+
+      fontWeight:
+        "800",
+
+      fontSize:
+        11,
     },
 
+    /* =====================================================
+       INTRO
+    ===================================================== */
+
     intro: {
-      marginBottom: 27,
+      marginBottom:
+        27,
     },
 
     smallTitle: {
-      color: COLORS.emerald,
-      fontSize: 10,
-      fontWeight: "900",
-      letterSpacing: 1.2,
+      color:
+        COLORS.emerald,
+
+      fontSize:
+        10,
+
+      fontWeight:
+        "900",
+
+      letterSpacing:
+        1.2,
     },
 
     mainTitle: {
-      color: COLORS.text,
-      fontSize: 36,
-      lineHeight: 43,
-      fontWeight: "800",
-      marginTop: 10,
+      color:
+        COLORS.text,
+
+      fontSize:
+        36,
+
+      lineHeight:
+        43,
+
+      fontWeight:
+        "800",
+
+      marginTop:
+        10,
     },
 
     mainDescription: {
-      color: COLORS.muted,
-      fontSize: 14,
-      lineHeight: 22,
-      maxWidth: 600,
-      marginTop: 10,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        14,
+
+      lineHeight:
+        22,
+
+      maxWidth:
+        650,
+
+      marginTop:
+        10,
     },
 
     progressTrack: {
-      height: 5,
+      height:
+        5,
+
       backgroundColor:
         COLORS.sage,
-      borderRadius: 999,
-      marginTop: 22,
-      overflow: "hidden",
+
+      borderRadius:
+        999,
+
+      marginTop:
+        22,
+
+      overflow:
+        "hidden",
     },
 
     progressFill: {
-      height: "100%",
+      height:
+        "100%",
+
       backgroundColor:
         COLORS.emerald,
     },
 
+    /* =====================================================
+       QUESTION CARD
+    ===================================================== */
+
     questionCard: {
       backgroundColor:
         COLORS.surface,
-      borderRadius: 23,
-      borderWidth: 1,
+
+      borderRadius:
+        23,
+
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
-      padding: 23,
-      marginBottom: 17,
+
+      padding:
+        23,
+
+      marginBottom:
+        17,
     },
 
     questionTop: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      marginBottom:
+        12,
     },
 
     questionNumber: {
-      color: COLORS.emerald,
-      fontSize: 11,
-      fontWeight: "900",
-      marginRight: 9,
+      color:
+        COLORS.emerald,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "900",
+
+      marginRight:
+        9,
     },
 
     questionCategory: {
-      color: COLORS.muted,
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.1,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        9,
+
+      fontWeight:
+        "800",
+
+      letterSpacing:
+        1.1,
     },
 
     questionTitle: {
-      color: COLORS.text,
-      fontSize: 22,
-      fontWeight: "800",
+      color:
+        COLORS.text,
+
+      fontSize:
+        22,
+
+      fontWeight:
+        "800",
     },
 
     questionDescription: {
-      color: COLORS.muted,
-      fontSize: 13,
-      lineHeight: 20,
-      marginTop: 6,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        13,
+
+      lineHeight:
+        20,
+
+      marginTop:
+        6,
     },
 
     questionContent: {
-      marginTop: 19,
+      marginTop:
+        19,
     },
 
+    /* =====================================================
+       OPTIONS
+    ===================================================== */
+
     options: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 9,
+      flexDirection:
+        "row",
+
+      flexWrap:
+        "wrap",
+
+      gap:
+        9,
     },
 
     choice: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 15,
-      paddingVertical: 11,
-      borderRadius: 13,
-      borderWidth: 1,
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      paddingHorizontal:
+        15,
+
+      paddingVertical:
+        11,
+
+      borderRadius:
+        13,
+
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
+
       backgroundColor:
         "#FAFCF9",
     },
@@ -1965,319 +3152,890 @@ const styles =
     choiceSelected: {
       backgroundColor:
         COLORS.sageSoft,
+
       borderColor:
         "#ABC2AE",
     },
 
     choiceDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 5,
+      width:
+        7,
+
+      height:
+        7,
+
+      borderRadius:
+        5,
+
       backgroundColor:
         COLORS.emerald,
-      marginRight: 8,
+
+      marginRight:
+        8,
     },
 
     choiceText: {
-      color: COLORS.text,
-      fontSize: 13,
-      fontWeight: "600",
+      color:
+        COLORS.text,
+
+      fontSize:
+        13,
+
+      fontWeight:
+        "600",
     },
 
     choiceTextSelected: {
-      color: COLORS.forest,
-      fontWeight: "800",
+      color:
+        COLORS.forest,
+
+      fontWeight:
+        "800",
     },
 
-    inputBlock: {
+    /* =====================================================
+       COUNTRY
+    ===================================================== */
+
+    sectionLabel: {
+      color:
+        COLORS.forest,
+
+      fontSize:
+        10,
+
+      fontWeight:
+        "900",
+
+      letterSpacing:
+        0.9,
+
+      marginBottom:
+        11,
+    },
+
+    countryDivider: {
+      height:
+        1,
+
       backgroundColor:
-        "#FAFCF9",
-      borderWidth: 1,
+        COLORS.border,
+
+      marginVertical:
+        20,
+    },
+
+    sameCountryButton: {
+      alignSelf:
+        "flex-start",
+
+      marginBottom:
+        12,
+
+      paddingHorizontal:
+        12,
+
+      paddingVertical:
+        9,
+
+      borderRadius:
+        11,
+
+      backgroundColor:
+        COLORS.sage,
+    },
+
+    sameCountryText: {
+      color:
+        COLORS.forest,
+
+      fontSize:
+        10,
+
+      fontWeight:
+        "800",
+    },
+
+    infoBox: {
+      marginTop:
+        17,
+
+      padding:
+        15,
+
+      borderRadius:
+        15,
+
+      backgroundColor:
+        COLORS.sageSoft,
+
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
-      borderRadius: 16,
-      padding: 15,
+    },
+
+    infoTitle: {
+      color:
+        COLORS.forest,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "900",
+    },
+
+    infoText: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        16,
+
+      marginTop:
+        5,
+    },
+
+    countryExplanation: {
+      marginTop:
+        16,
+
+      padding:
+        14,
+
+      borderRadius:
+        14,
+
+      backgroundColor:
+        COLORS.sageSoft,
+    },
+
+    countryExplanationText: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        16,
+    },
+
+    /* =====================================================
+       GPA
+    ===================================================== */
+
+    gpaContainer: {
+      flexDirection:
+        "row",
+
+      alignItems:
+        "flex-end",
+
+      gap:
+        12,
+    },
+
+    gpaField: {
+      flex:
+        1,
     },
 
     inputLabel: {
-      color: COLORS.forest,
-      fontSize: 11,
-      fontWeight: "800",
+      color:
+        COLORS.forest,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "800",
+
+      marginBottom:
+        7,
     },
 
-    input: {
-      fontSize: 17,
-      color: COLORS.text,
-      paddingVertical: 8,
-    },
+    gpaInput: {
+      height:
+        57,
 
-    inputHelp: {
-      color: COLORS.muted,
-      fontSize: 10,
-    },
+      borderWidth:
+        1,
 
-    switchBlock: {
-      backgroundColor:
-        COLORS.sageSoft,
-      borderWidth: 1,
       borderColor:
         COLORS.border,
-      borderRadius: 16,
-      padding: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 14,
-    },
 
-    switchTitle: {
-      color: COLORS.text,
-      fontSize: 13,
-      fontWeight: "800",
-    },
+      borderRadius:
+        14,
 
-    switchSubtitle: {
-      color: COLORS.muted,
-      fontSize: 10,
-      marginTop: 3,
-    },
-
-    examRow: {
-      flexDirection: "row",
-      gap: 10,
-    },
-
-    examBlock: {
-      flex: 1,
       backgroundColor:
         "#FAFCF9",
-      borderRadius: 15,
-      borderWidth: 1,
-      borderColor:
-        COLORS.border,
-      padding: 14,
+
+      paddingHorizontal:
+        15,
+
+      color:
+        COLORS.text,
+
+      fontSize:
+        21,
+
+      fontWeight:
+        "800",
     },
 
-    examLabel: {
-      color: COLORS.emerald,
-      fontSize: 10,
-      fontWeight: "900",
+    gpaSlash: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        30,
+
+      fontWeight:
+        "700",
+
+      paddingBottom:
+        10,
     },
 
-    examInput: {
-      color: COLORS.text,
-      fontSize: 20,
-      fontWeight: "800",
-      marginTop: 5,
-    },
-
-    invalidField: {
+    inputError: {
       borderColor:
         COLORS.error,
-      borderWidth: 2,
+
       backgroundColor:
         COLORS.errorSoft,
     },
 
-    scholarshipBlock: {
-      marginTop: 15,
-      flexDirection: "row",
-      alignItems: "center",
+    quickScaleLabel: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        9,
+
+      fontWeight:
+        "700",
+
+      marginTop:
+        16,
+
+      marginBottom:
+        9,
+
+      textTransform:
+        "uppercase",
+
+      letterSpacing:
+        0.7,
+    },
+
+    errorText: {
+      color:
+        COLORS.error,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        15,
+
+      marginTop:
+        10,
+
+      fontWeight:
+        "700",
+    },
+
+    gpaExample: {
+      marginTop:
+        15,
+
+      padding:
+        13,
+
+      borderRadius:
+        13,
+
       backgroundColor:
         COLORS.sageSoft,
-      padding: 16,
-      borderRadius: 17,
+    },
+
+    gpaExampleText: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        16,
+    },
+
+    /* =====================================================
+       EXAMS
+    ===================================================== */
+
+    switchBlock: {
+      backgroundColor:
+        COLORS.sageSoft,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        COLORS.border,
+
+      borderRadius:
+        16,
+
+      padding:
+        16,
+
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      marginBottom:
+        14,
+    },
+
+    switchTitle: {
+      color:
+        COLORS.text,
+
+      fontSize:
+        13,
+
+      fontWeight:
+        "800",
+    },
+
+    switchSubtitle: {
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      marginTop:
+        3,
+    },
+
+    examRow: {
+      flexDirection:
+        "row",
+
+      gap:
+        10,
+    },
+
+    examBlock: {
+      flex:
+        1,
+
+      backgroundColor:
+        "#FAFCF9",
+
+      borderRadius:
+        15,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        COLORS.border,
+
+      padding:
+        14,
+    },
+
+    examLabel: {
+      color:
+        COLORS.emerald,
+
+      fontSize:
+        10,
+
+      fontWeight:
+        "900",
+    },
+
+    examInput: {
+      color:
+        COLORS.text,
+
+      fontSize:
+        20,
+
+      fontWeight:
+        "800",
+
+      marginTop:
+        5,
+
+      borderBottomWidth:
+        1,
+
+      borderBottomColor:
+        "transparent",
+    },
+
+    examInputError: {
+      borderBottomColor:
+        COLORS.error,
+    },
+
+    examError: {
+      color:
+        COLORS.error,
+
+      fontSize:
+        9,
+
+      lineHeight:
+        13,
+
+      marginTop:
+        6,
+    },
+
+    continueButton: {
+      alignSelf:
+        "flex-start",
+
+      marginTop:
+        14,
+
+      backgroundColor:
+        COLORS.forest,
+
+      borderRadius:
+        12,
+
+      paddingHorizontal:
+        16,
+
+      paddingVertical:
+        11,
+    },
+
+    continueButtonText: {
+      color:
+        "#FFFFFF",
+
+      fontSize:
+        10,
+
+      fontWeight:
+        "900",
+    },
+
+    /* =====================================================
+       FINANCES
+    ===================================================== */
+
+    scholarshipBlock: {
+      marginTop:
+        15,
+
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      backgroundColor:
+        COLORS.sageSoft,
+
+      padding:
+        16,
+
+      borderRadius:
+        17,
     },
 
     moneyIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 12,
+      width:
+        38,
+
+      height:
+        38,
+
+      borderRadius:
+        12,
+
       backgroundColor:
         COLORS.forest,
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
-      marginRight: 12,
+
+      marginRight:
+        12,
     },
 
     moneyIconText: {
-      color: "#FFFFFF",
-      fontSize: 17,
-      fontWeight: "900",
+      color:
+        "#FFFFFF",
+
+      fontSize:
+        17,
+
+      fontWeight:
+        "900",
     },
 
+    /* =====================================================
+       PORTFOLIO
+    ===================================================== */
+
     achievementList: {
-      gap: 13,
+      gap:
+        13,
     },
 
     achievementCard: {
-      borderWidth: 1,
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
-      borderRadius: 17,
+
+      borderRadius:
+        17,
+
       backgroundColor:
         "#FAFCF9",
-      padding: 16,
+
+      padding:
+        16,
     },
 
     achievementTop: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      marginBottom:
+        12,
     },
 
     achievementNumber: {
-      width: 31,
-      height: 31,
-      borderRadius: 10,
+      width:
+        31,
+
+      height:
+        31,
+
+      borderRadius:
+        10,
+
       backgroundColor:
         COLORS.sage,
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
-      marginRight: 10,
+
+      marginRight:
+        10,
     },
 
     achievementNumberText: {
-      color: COLORS.forest,
-      fontSize: 11,
-      fontWeight: "900",
+      color:
+        COLORS.forest,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "900",
     },
 
     achievementTitle: {
-      color: COLORS.text,
-      fontSize: 14,
-      fontWeight: "800",
+      color:
+        COLORS.text,
+
+      fontSize:
+        14,
+
+      fontWeight:
+        "800",
     },
 
     achievementSubtitle: {
-      color: COLORS.muted,
-      fontSize: 10,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      marginTop:
+        2,
     },
 
     achievementInput: {
-      minHeight: 100,
-      borderWidth: 1,
+      minHeight:
+        110,
+
+      borderWidth:
+        1,
+
       borderColor:
         COLORS.border,
-      borderRadius: 13,
+
+      borderRadius:
+        13,
+
       backgroundColor:
         COLORS.surface,
-      padding: 13,
-      color: COLORS.text,
-      fontSize: 13,
-      lineHeight: 20,
+
+      padding:
+        13,
+
+      color:
+        COLORS.text,
+
+      fontSize:
+        13,
+
+      lineHeight:
+        20,
     },
 
     counter: {
-      color: COLORS.muted,
-      fontSize: 9,
-      textAlign: "right",
-      marginTop: 6,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        9,
+
+      textAlign:
+        "right",
+
+      marginTop:
+        6,
     },
 
     emptyPortfolio: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: 17,
+      flexDirection:
+        "row",
+
+      alignItems:
+        "center",
+
+      padding:
+        17,
+
       backgroundColor:
         COLORS.sageSoft,
-      borderRadius: 17,
+
+      borderRadius:
+        17,
     },
 
     emptyIcon: {
-      width: 43,
-      height: 43,
-      borderRadius: 13,
+      width:
+        43,
+
+      height:
+        43,
+
+      borderRadius:
+        13,
+
       backgroundColor:
         COLORS.forest,
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
-      marginRight: 13,
+
+      marginRight:
+        13,
     },
 
     emptyIconText: {
-      color: "#FFFFFF",
-      fontSize: 22,
+      color:
+        "#FFFFFF",
+
+      fontSize:
+        22,
     },
 
     emptyTitle: {
-      color: COLORS.text,
-      fontWeight: "800",
+      color:
+        COLORS.text,
+
+      fontWeight:
+        "800",
     },
 
     emptyText: {
-      color: COLORS.muted,
-      fontSize: 10,
-      lineHeight: 16,
-      marginTop: 4,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        16,
+
+      marginTop:
+        4,
     },
 
+    /* =====================================================
+       FINISH
+    ===================================================== */
+
     finishBlock: {
-      marginTop: 22,
-      paddingTop: 20,
-      borderTopWidth: 1,
+      marginTop:
+        22,
+
+      paddingTop:
+        20,
+
+      borderTopWidth:
+        1,
+
       borderTopColor:
         COLORS.border,
     },
 
     finishSmall: {
-      color: COLORS.emerald,
-      fontSize: 9,
-      fontWeight: "900",
-      letterSpacing: 1,
+      color:
+        COLORS.emerald,
+
+      fontSize:
+        9,
+
+      fontWeight:
+        "900",
+
+      letterSpacing:
+        1,
     },
 
     finishTitle: {
-      color: COLORS.text,
-      fontSize: 18,
-      fontWeight: "800",
-      marginTop: 10,
+      color:
+        COLORS.text,
+
+      fontSize:
+        18,
+
+      fontWeight:
+        "800",
+
+      marginTop:
+        10,
     },
 
     finishDescription: {
-      color: COLORS.muted,
-      fontSize: 11,
-      lineHeight: 17,
-      marginTop: 5,
+      color:
+        COLORS.muted,
+
+      fontSize:
+        11,
+
+      lineHeight:
+        17,
+
+      marginTop:
+        5,
     },
 
     saveError: {
-      color: COLORS.error,
-      fontSize: 11,
-      fontWeight: "700",
-      lineHeight: 17,
-      marginTop: 12,
+      marginTop:
+        14,
+
+      padding:
+        12,
+
+      borderRadius:
+        12,
+
+      backgroundColor:
+        COLORS.errorSoft,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        "#E7CACA",
+    },
+
+    saveErrorText: {
+      color:
+        COLORS.error,
+
+      fontSize:
+        10,
+
+      lineHeight:
+        15,
+
+      fontWeight:
+        "700",
     },
 
     finishButton: {
-      height: 54,
-      borderRadius: 15,
+      height:
+        54,
+
+      borderRadius:
+        15,
+
       backgroundColor:
         COLORS.forest,
-      alignItems: "center",
+
+      alignItems:
+        "center",
+
       justifyContent:
         "center",
-      marginTop: 18,
-    },
 
-    finishButtonDisabled: {
-      opacity: 0.6,
+      marginTop:
+        18,
     },
 
     finishPressed: {
-      opacity: 0.8,
+      opacity:
+        0.8,
     },
 
     finishButtonText: {
-      color: "#FFFFFF",
-      fontSize: 11,
-      fontWeight: "900",
-      letterSpacing: 0.8,
+      color:
+        "#FFFFFF",
+
+      fontSize:
+        11,
+
+      fontWeight:
+        "900",
+
+      letterSpacing:
+        0.8,
     },
 
     pressed: {
-      opacity: 0.7,
+      opacity:
+        0.7,
     },
   });
